@@ -39,6 +39,26 @@ app.use(`${apiVersion}/analytics`, analyticsRoutes);
 app.use(`${apiVersion}/orders`, orderRoutes);
 app.use(`${apiVersion}/invoices`, invoiceRoutes);
 
+// Root route
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Social Scale API",
+    version: "1.0.0",
+    documentation: "https://social-scale.vercel.app/api/v1",
+    endpoints: {
+      auth: `${apiVersion}/auth`,
+      companies: `${apiVersion}/companies`,
+      users: `${apiVersion}/users`,
+      orders: `${apiVersion}/orders`,
+      analytics: `${apiVersion}/analytics`,
+      invoices: `${apiVersion}/invoices`,
+      "api-integrations": `${apiVersion}/api-integrations`,
+    },
+    health: "/health",
+  });
+});
+
 app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
