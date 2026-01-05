@@ -4,10 +4,34 @@ const connectDB = require("./config/db");
 const logger = require("./config/logger");
 const config = require("./config/env");
 
-// Connect to database
-connectDB().catch((error) => {
-  logger.error("Failed to connect to database:", error);
-  process.exit(1);
+// Global flag to track DB connection status
+let isDbConnected = false;
+
+// Initialize database connection
+const initializeDB = async () => {
+  try {
+    await connectDB();
+    isDbConnected = true;
+    logger.info("Database connected successfully");
+  } catch (error) {
+    logger.error("Failed to connect to database:", error);
+    isDbConnected = false;
+  }
+};
+
+// Initialize DB connection
+initializeDB();
+
+// Middleware to check DB connection for critical routes
+app.use('/api', (req, res, next) => {
+  if (!isDbConnected) {
+    logger.error("Database not connected, returning 500");
+    return res.status(500).json({
+      success: false,
+      message: "Database connection failed. Please try again later."
+    });
+  }
+  next();
 });
 
 // Export the app for Vercel serverless functions

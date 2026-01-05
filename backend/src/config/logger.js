@@ -8,31 +8,47 @@ const logFormat = winston.format.combine(
   winston.format.json()
 );
 
+// In serverless environments, use console logging
+const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+
 const logger = winston.createLogger({
   level: config.logging.level,
   format: logFormat,
   defaultMeta: { service: "social-scale-backend" },
   transports: [
-    new winston.transports.File({ filename: "logs/error.log", level: "error" }),
-    new winston.transports.File({ filename: "logs/combined.log" }),
+    // Use console in serverless environments
+    ...(isServerless ? [] : [
+      new winston.transports.File({ filename: "logs/error.log", level: "error" }),
+      new winston.transports.File({ filename: "logs/combined.log" }),
+    ]),
   ],
 });
 
-if (config.env !== "production") {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.printf(({ timestamp, level, message, ...meta }) => {
-          let msg = `${timestamp} [${level}]: ${message}`;
-          if (Object.keys(meta).length > 0) {
-            msg += ` ${JSON.stringify(meta)}`;
-          }
-          return msg;
-        })
-      ),
-    })
-  );
-}
+// Always add console transport for both environments
+logger.add(
+  new winston.transports.Console({
+    format: isServerless
+      ? winston.format.combine(
+          winston.format.colorize(),
+          winston.format.printf(({ timestamp, level, message, ...meta }) => {
+            let msg = `${timestamp} [${level}]: ${message}`;
+            if (Object.keys(meta).length > 0) {
+              msg += ` ${JSON.stringify(meta)}`;
+            }
+            return msg;
+          })
+        )
+      : winston.format.combine(
+          winston.format.colorize(),
+          winston.format.printf(({ timestamp, level, message, ...meta }) => {
+            let msg = `${timestamp} [${level}]: ${message}`;
+            if (Object.keys(meta).length > 0) {
+              msg += ` ${JSON.stringify(meta)}`;
+            }
+            return msg;
+          })
+        ),
+  })
+);
 
 module.exports = logger;
