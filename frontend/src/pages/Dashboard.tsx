@@ -244,7 +244,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={256}>
                   <AreaChart data={trendData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                     <XAxis
@@ -290,7 +290,7 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="h-64">
                 {serviceTypeData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={256}>
                     <BarChart data={serviceTypeData.slice(0, 5)} layout="horizontal">
                       <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                       <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
@@ -343,7 +343,7 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="h-64">
                 {statusData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={256}>
                     <RechartsPieChart>
                       <Pie
                         data={statusData}

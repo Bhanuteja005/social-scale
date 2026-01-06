@@ -196,6 +196,31 @@ class ApiService {
     const response = await this.api.get('/api-integrations/logs', { params });
     return response.data;
   }
+
+  async getSubscriptionPlans() {
+    const response = await this.api.get('/subscriptions/plans');
+    return response.data;
+  }
+
+  async getUserCredits() {
+    const response = await this.api.get('/subscriptions/credits');
+    return response.data;
+  }
+
+  async getUserSubscriptions() {
+    const response = await this.api.get('/subscriptions');
+    return response.data;
+  }
+
+  async createSubscription(data: any) {
+    const response = await this.api.post('/subscriptions', data);
+    return response.data;
+  }
+
+  async activateSubscription(data: any) {
+    const response = await this.api.post('/subscriptions/activate', data);
+    return response.data;
+  }
 }
 
 export default new ApiService();

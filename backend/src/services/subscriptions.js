@@ -4,6 +4,14 @@ const User = require("../models/User");
 const PricingRule = require("../models/PricingRule");
 const { AppError } = require("../utils/errors");
 const logger = require("../config/logger");
+const config = require("../config/env");
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
+
+const razorpay = new Razorpay({
+  key_id: config.razorpay.keyId,
+  key_secret: config.razorpay.keySecret,
+});
 
 class SubscriptionService {
   // Get pricing for a plan
@@ -27,8 +35,8 @@ class SubscriptionService {
     if (pricingRules.length === 0) {
       // Default pricing if no rules found
       const defaultPricing = {
-        growth: { credits: 2500, price: 29, currency: "USD" },
-        enterprise: { credits: 10000, price: 99, currency: "USD" },
+        growth: { credits: 2500, price: 29, currency: "INR" },
+        enterprise: { credits: 10000, price: 99, currency: "INR" },
       };
       return defaultPricing[plan] || null;
     }
@@ -40,19 +48,64 @@ class SubscriptionService {
     return planPricing || null;
   }
 
+  // Create Razorpay order
+  async createRazorpayOrder(orderData) {
+    try {
+      const options = {
+        amount: orderData.amount, // amount in the smallest currency unit
+        currency: orderData.currency || "INR",
+        // receipt: orderData.receipt, // Remove receipt for now
+        payment_capture: 1, // auto capture
+      };
+
+      console.log('Creating Razorpay order with options:', options);
+      const order = await razorpay.orders.create(options);
+      logger.info(`Razorpay order created: ${order.id}`);
+      return order;
+    } catch (error) {
+      logger.error("Error creating Razorpay order:", error);
+      console.error("Razorpay error details:", error.message, error.code, error.metadata);
+      throw new AppError("Failed to create payment order", 500);
+    }
+  }
+
+  // Verify Razorpay payment
+  async verifyRazorpayPayment(paymentId, orderId, signature) {
+    try {
+      const sign = orderId + "|" + paymentId;
+      const expectedSign = crypto
+        .createHmac("sha256", config.razorpay.keySecret)
+        .update(sign.toString())
+        .digest("hex");
+
+      if (signature === expectedSign) {
+        return true;
+      } else {
+        throw new AppError("Payment verification failed", 400);
+      }
+    } catch (error) {
+      logger.error("Error verifying Razorpay payment:", error);
+      throw error;
+    }
+  }
+
   // Create subscription
   async createSubscription(userId, planData) {
+    console.log('Creating subscription for userId:', userId, 'planData:', planData);
     const user = await User.findById(userId);
     if (!user) {
       throw new AppError("User not found", 404);
     }
 
-    const { plan, billingCycle = "monthly", paymentMethod = "mercury", paymentId } = planData;
+    const { plan, billingCycle = "monthly", paymentMethod = "razorpay" } = planData;
+    console.log('Plan:', plan, 'Billing cycle:', billingCycle, 'Payment method:', paymentMethod);
 
     // Get pricing for the plan
     const pricing = await this.getPlanPricing(userId, plan);
-    if (!pricing) {
-      throw new AppError("Invalid subscription plan", 400);
+    console.log('Pricing for plan', plan, ':', pricing);
+    if (!pricing || typeof pricing.price !== 'number' || pricing.price <= 0) {
+      console.error('Invalid pricing:', pricing);
+      throw new AppError("Invalid subscription plan pricing", 400);
     }
 
     // Calculate dates
@@ -64,6 +117,19 @@ class SubscriptionService {
       endDate.setFullYear(endDate.getFullYear() + 1);
     }
 
+    // Create Razorpay order if payment method is razorpay
+    let razorpayOrder = null;
+    if (paymentMethod === "razorpay") {
+      console.log('Creating Razorpay order with amount:', pricing.price * 100);
+      const amount = Math.round(pricing.price * 100); // Ensure it's an integer
+      console.log('Rounded amount:', amount);
+      razorpayOrder = await this.createRazorpayOrder({
+        amount: amount, // Razorpay expects amount in paisa (for INR)
+        currency: "INR", // Assuming INR for Razorpay
+      });
+      console.log('Razorpay order created:', razorpayOrder);
+    }
+
     // Create subscription
     const subscription = await Subscription.create({
       userId: user._id,
@@ -71,23 +137,23 @@ class SubscriptionService {
       plan,
       credits: pricing.credits,
       price: pricing.price,
-      currency: pricing.currency || "USD",
+      currency: pricing.currency || "INR",
       billingCycle,
       status: "pending",
       startDate,
       endDate,
       autoRenew: false,
       paymentMethod,
-      paymentId,
+      razorpayOrderId: razorpayOrder ? razorpayOrder.id : null,
     });
 
     logger.info(`Subscription created for user ${userId}: ${subscription._id}`);
 
-    return subscription;
+    return { subscription, razorpayOrder };
   }
 
   // Activate subscription after successful payment
-  async activateSubscription(subscriptionId, paymentId) {
+  async activateSubscription(subscriptionId, paymentData) {
     const subscription = await Subscription.findById(subscriptionId);
     if (!subscription) {
       throw new AppError("Subscription not found", 404);
@@ -98,9 +164,17 @@ class SubscriptionService {
       throw new AppError("User not found", 404);
     }
 
+    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = paymentData;
+
+    // Verify Razorpay payment if signature provided
+    if (razorpaySignature && razorpayOrderId && razorpayPaymentId) {
+      await this.verifyRazorpayPayment(razorpayPaymentId, razorpayOrderId, razorpaySignature);
+    }
+
     // Update subscription status
     subscription.status = "active";
-    subscription.paymentId = paymentId;
+    subscription.paymentId = paymentId || razorpayPaymentId;
+    if (razorpayOrderId) subscription.razorpayOrderId = razorpayOrderId;
     await subscription.save();
 
     // Add credits to user

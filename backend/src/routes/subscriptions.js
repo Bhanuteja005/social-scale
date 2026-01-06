@@ -1,10 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const subscriptionController = require("../controllers/subscriptions");
-const { protect } = require("../middlewares/auth");
+const { authenticate } = require("../middlewares/auth");
+
+// Razorpay webhook (no auth required)
+router.post("/webhook/razorpay", subscriptionController.razorpayWebhook);
 
 // All routes require authentication
-router.use(protect);
+router.use(authenticate);
 
 // Get pricing plans
 router.get("/plans", subscriptionController.getPricingPlans);

@@ -57,12 +57,16 @@ const subscriptionSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["mercury", "stripe", "manual"],
-      default: "mercury",
+      enum: ["mercury", "stripe", "razorpay", "manual"],
+      default: "razorpay",
     },
     paymentId: {
       type: String,
       index: true,
+      sparse: true,
+    },
+    razorpayOrderId: {
+      type: String,
       sparse: true,
     },
   },

@@ -34,6 +34,11 @@ module.exports = {
     baseUrl: process.env.FAMPAGE_BASE_URL || "https://fampage.in/api/v2",
   },
 
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_S0YsSSmMBuT5yg",
+    keySecret: process.env.RAZORPAY_KEY_SECRET || "eSXmevcuu7PFmCvnqqiU4Sy6",
+  },
+
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,

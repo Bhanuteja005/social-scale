@@ -1,11 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const pricingController = require("../controllers/pricing");
-const { protect, restrictTo } = require("../middlewares/auth");
+const { authenticate, authorize } = require("../middlewares/auth");
 const roles = require("../config/roles");
 
 // All routes require authentication
-router.use(protect);
+router.use(authenticate);
 
 // Calculate credits for order (any authenticated user)
 router.post("/calculate", pricingController.calculateCredits);
@@ -14,7 +14,7 @@ router.post("/calculate", pricingController.calculateCredits);
 router.get("/user/:userId?", pricingController.getUserPricing);
 
 // Admin-only routes
-router.use(restrictTo(roles.SUPER_ADMIN));
+router.use(authorize(roles.SUPER_ADMIN));
 
 // Get pricing rules
 router.get("/rules", pricingController.getPricingRules);

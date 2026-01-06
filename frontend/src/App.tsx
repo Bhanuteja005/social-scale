@@ -9,6 +9,7 @@ import OrdersList from './pages/OrdersList';
 import NewOrder from './pages/NewOrder';
 import Analytics from './pages/Analytics';
 import Dashboard from './pages/Dashboard';
+import Subscription from './pages/Subscription';
 import './App.css';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
             <Route path="orders" element={<OrdersList />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="new-order" element={<NewOrder />} />
+            <Route path="subscription" element={<Subscription />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

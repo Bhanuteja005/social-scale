@@ -10,6 +10,7 @@ import {
   X,
   Layers,
   TrendingUp,
+  CreditCard,
 } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
@@ -30,6 +31,7 @@ const Sidebar: React.FC = () => {
   const getMenuItems = () => {
     return [
       { path: '/', label: 'Dashboard', icon: TrendingUp },
+      { path: '/subscription', label: 'Subscription', icon: CreditCard },
       { path: '/new-order', label: 'New Order', icon: ShoppingCart },
       { path: '/orders', label: 'All Orders', icon: Layers },
       { path: '/companies', label: 'Companies', icon: Building2 },

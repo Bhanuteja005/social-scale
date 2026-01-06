@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const config = require("../config/env");
 const { AppError } = require("../utils/errors");
 const roles = require("../config/roles");
+const User = require("../models/User");
 
 const authenticate = async (req, res, next) => {
   try {
@@ -15,12 +16,13 @@ const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, config.jwt.secret);
 
-    req.user = {
-      userId: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
-      companyId: decoded.companyId,
-    };
+    // Fetch the full user object
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    req.user = user;
 
     next();
   } catch (error) {
