@@ -5,6 +5,7 @@ const { AppError } = require("../utils/errors");
 const createOrder = async (req, res, next) => {
   try {
     const orderData = req.body;
+    const userId = req.user._id;
     
     // For COMPANY_USER, ensure they can only create orders for their company
     if (req.user.role === 'COMPANY_USER') {
@@ -16,7 +17,8 @@ const createOrder = async (req, res, next) => {
       }
     }
     
-    const order = await orderService.createOrder(orderData);
+    // Pass userId for credit deduction
+    const order = await orderService.createOrder(orderData, userId);
 
     res.status(201).json({
       success: true,

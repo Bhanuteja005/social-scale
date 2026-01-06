@@ -1,12 +1,16 @@
 const Order = require("../models/Order");
 const Company = require("../models/Company");
+const User = require("../models/User");
+const Transaction = require("../models/Transaction");
 const { NotFoundError, AppError } = require("../utils/errors");
 const invoiceService = require("./invoices");
 const apiIntegrationService = require("./apiIntegrations");
+const pricingService = require("./pricing");
 const logger = require("../config/logger");
 
 const createOrder = async (
   orderData,
+  userId,
   autoCreateInvoice = true,
   invoiceMultiplier = 8
 ) => {
@@ -20,15 +24,77 @@ const createOrder = async (
     throw new NotFoundError("Company");
   }
 
+  // Get user and check credits
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new NotFoundError("User");
+  }
+
   // Provider ID should already be set by apiIntegrations service
   if (!orderData.providerId) {
     throw new AppError("Provider ID is required", 400);
   }
 
+  // Calculate credits required based on pricing rules
+  let creditsRequired = 0;
+  try {
+    // Extract platform and service type from service name or metadata
+    const { platform, serviceType } = extractServiceInfo(orderData.serviceName, orderData.serviceType);
+    
+    const creditCalc = await pricingService.calculateCredits(
+      userId,
+      platform,
+      serviceType,
+      orderData.quantity
+    );
+    creditsRequired = creditCalc.creditsRequired;
+  } catch (error) {
+    logger.warn(`Could not calculate credits for order: ${error.message}`);
+    // Fallback to basic calculation if pricing service fails
+    creditsRequired = Math.ceil(orderData.quantity * 0.1); // Default fallback
+  }
+
+  // Check if user has enough credits
+  if (user.credits.balance < creditsRequired) {
+    throw new AppError(
+      `Insufficient credits. Required: ${creditsRequired}, Available: ${user.credits.balance}`,
+      400
+    );
+  }
+
+  // Deduct credits from user
+  const balanceBefore = user.credits.balance;
+  user.credits.balance -= creditsRequired;
+  user.credits.totalSpent += creditsRequired;
+  await user.save();
+
+  // Add credits and user info to order data
+  orderData.creditsUsed = creditsRequired;
+  orderData.userId = userId;
+
   console.log('Final order data:', JSON.stringify(orderData, null, 2));
 
   const order = await Order.create(orderData);
   const orderObj = order.toJSON();
+
+  // Create transaction record
+  await Transaction.create({
+    userId,
+    companyId: orderData.companyId,
+    type: "credit_deduction",
+    amount: orderData.cost || 0,
+    currency: "USD",
+    credits: creditsRequired,
+    balanceBefore,
+    balanceAfter: user.credits.balance,
+    status: "completed",
+    paymentMethod: "admin",
+    orderId: order._id,
+    metadata: {
+      serviceName: orderData.serviceName,
+      quantity: orderData.quantity,
+    },
+  });
 
   console.log('Order created successfully:', orderObj._id);
 
@@ -49,6 +115,36 @@ const createOrder = async (
 
   return orderObj;
 };
+
+// Helper function to extract platform and service type
+function extractServiceInfo(serviceName, serviceType) {
+  const nameLower = (serviceName || "").toLowerCase();
+  
+  // Detect platform
+  let platform = "instagram"; // default
+  if (nameLower.includes("instagram") || nameLower.includes("ig")) platform = "instagram";
+  else if (nameLower.includes("facebook") || nameLower.includes("fb")) platform = "facebook";
+  else if (nameLower.includes("twitter") || nameLower.includes("x ")) platform = "twitter";
+  else if (nameLower.includes("linkedin")) platform = "linkedin";
+  else if (nameLower.includes("youtube") || nameLower.includes("yt")) platform = "youtube";
+  else if (nameLower.includes("tiktok")) platform = "tiktok";
+  else if (nameLower.includes("threads")) platform = "threads";
+
+  // Map service type
+  const typeMap = {
+    follow: "follower",
+    like: "like",
+    comment: "comment",
+    view: "view",
+    subscribe: "subscriber",
+    retweet: "retweet",
+    share: "share",
+  };
+
+  const mappedType = typeMap[serviceType] || serviceType || "follower";
+
+  return { platform, serviceType: mappedType };
+}
 
 const getOrderById = async (orderId) => {
   const order = await Order.findById(orderId)

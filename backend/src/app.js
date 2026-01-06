@@ -13,6 +13,9 @@ const apiIntegrationRoutes = require("./routes/apiIntegrations");
 const analyticsRoutes = require("./routes/analytics");
 const orderRoutes = require("./routes/orders");
 const invoiceRoutes = require("./routes/invoices");
+const subscriptionRoutes = require("./routes/subscriptions");
+const pricingRoutes = require("./routes/pricing");
+const orderSyncRoutes = require("./routes/orderSync");
 
 const app = express();
 
@@ -38,6 +41,9 @@ app.use(`${apiVersion}/api-integrations`, apiIntegrationRoutes);
 app.use(`${apiVersion}/analytics`, analyticsRoutes);
 app.use(`${apiVersion}/orders`, orderRoutes);
 app.use(`${apiVersion}/invoices`, invoiceRoutes);
+app.use(`${apiVersion}/subscriptions`, subscriptionRoutes);
+app.use(`${apiVersion}/pricing`, pricingRoutes);
+app.use(`${apiVersion}/order-sync`, orderSyncRoutes);
 
 // Root route
 app.get("/", (req, res) => {
