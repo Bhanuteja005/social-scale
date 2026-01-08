@@ -36,13 +36,16 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-const authorize = (...allowedRoles) => {
+const authorize = (allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {
       throw new AppError("Authentication required", 401);
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    // Handle both array and single role
+    const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+
+    if (!roles.includes(req.user.role)) {
       throw new AppError("Insufficient permissions", 403);
     }
 

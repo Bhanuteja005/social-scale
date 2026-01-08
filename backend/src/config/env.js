@@ -18,6 +18,10 @@ module.exports = {
     refreshTokenExpiry: process.env.JWT_REFRESH_TOKEN_EXPIRY || "7d",
   },
 
+  session: {
+    secret: process.env.SESSION_SECRET || "default-session-secret-change-in-production",
+  },
+
   logging: {
     level: process.env.LOG_LEVEL || "info",
   },
@@ -38,6 +42,14 @@ module.exports = {
     keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_S0YsSSmMBuT5yg",
     keySecret: process.env.RAZORPAY_KEY_SECRET || "eSXmevcuu7PFmCvnqqiU4Sy6",
   },
+
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackUrl: process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/api/v1/auth/google/callback",
+  },
+
+  frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
 
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,

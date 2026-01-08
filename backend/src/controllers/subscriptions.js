@@ -28,20 +28,25 @@ exports.getPricingPlans = async (req, res) => {
     data: {
       plans: [
         {
-          name: "free",
+          plan: "free",
+          name: "Free",
           credits: 0,
-          price: 0,
+          amount: 0,
           currency: "INR",
           features: ["Access 3 Platforms", "Up to 500 Credits"],
         },
         {
-          name: "growth",
+          plan: "growth",
+          name: "Growth",
           ...growth,
+          amount: growth.price,
           features: ["Access 7 Platforms", "Scale to 20k Credits", "Priority Support"],
         },
         {
-          name: "enterprise",
+          plan: "enterprise",
+          name: "Enterprise",
           ...enterprise,
+          amount: enterprise.price,
           features: ["All Platforms", "Unlimited Credits", "24/7 Support", "Custom Pricing"],
         },
       ],

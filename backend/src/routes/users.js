@@ -34,6 +34,11 @@ router.get(
 );
 
 router.put(
+  "/profile",
+  userController.updateProfile
+);
+
+router.put(
   "/:userId",
   authorize(roles.SUPER_ADMIN),
   userValidation.validateUpdate,

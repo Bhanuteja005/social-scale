@@ -16,36 +16,12 @@ const razorpay = new Razorpay({
 class SubscriptionService {
   // Get pricing for a plan
   async getPlanPricing(userId, plan) {
-    const user = await User.findById(userId);
-    if (!user) {
-      throw new AppError("User not found", 404);
-    }
-
-    // Check for user-specific pricing first, then company, then global
-    const pricingRules = await PricingRule.find({
-      isActive: true,
-      "subscriptionPlans.plan": plan,
-      $or: [
-        { scope: "user", userId: user._id },
-        { scope: "company", companyId: user.companyId },
-        { scope: "global" },
-      ],
-    }).sort({ priority: -1 });
-
-    if (pricingRules.length === 0) {
-      // Default pricing if no rules found
-      const defaultPricing = {
-        growth: { credits: 2500, price: 29, currency: "INR" },
-        enterprise: { credits: 10000, price: 99, currency: "INR" },
-      };
-      return defaultPricing[plan] || null;
-    }
-
-    // Get the highest priority rule
-    const rule = pricingRules[0];
-    const planPricing = rule.subscriptionPlans.find((p) => p.plan === plan);
-    
-    return planPricing || null;
+    // Return default pricing for now
+    const defaultPricing = {
+      growth: { credits: 2500, price: 29, currency: "USD" },
+      enterprise: { credits: 10000, price: 99, currency: "USD" },
+    };
+    return defaultPricing[plan] || null;
   }
 
   // Create Razorpay order
@@ -120,14 +96,10 @@ class SubscriptionService {
     // Create Razorpay order if payment method is razorpay
     let razorpayOrder = null;
     if (paymentMethod === "razorpay") {
-      console.log('Creating Razorpay order with amount:', pricing.price * 100);
-      const amount = Math.round(pricing.price * 100); // Ensure it's an integer
-      console.log('Rounded amount:', amount);
       razorpayOrder = await this.createRazorpayOrder({
-        amount: amount, // Razorpay expects amount in paisa (for INR)
-        currency: "INR", // Assuming INR for Razorpay
+        amount: Math.round(pricing.price * 100), // Convert to paise
+        currency: pricing.currency || "INR",
       });
-      console.log('Razorpay order created:', razorpayOrder);
     }
 
     // Create subscription
@@ -139,13 +111,29 @@ class SubscriptionService {
       price: pricing.price,
       currency: pricing.currency || "INR",
       billingCycle,
-      status: "pending",
+      status: razorpayOrder ? "pending" : "active", // Active if no payment required
       startDate,
       endDate,
       autoRenew: false,
       paymentMethod,
       razorpayOrderId: razorpayOrder ? razorpayOrder.id : null,
     });
+
+    // Add credits immediately if no payment required
+    if (!razorpayOrder) {
+      user.credits.balance += pricing.credits;
+      user.credits.totalPurchased += pricing.credits;
+      await user.save();
+
+      // Create transaction record
+      await Transaction.create({
+        userId: user._id,
+        type: 'credit',
+        amount: pricing.credits,
+        reason: `Subscription: ${plan}`,
+        balanceAfter: user.credits.balance,
+      });
+    }
 
     logger.info(`Subscription created for user ${userId}: ${subscription._id}`);
 

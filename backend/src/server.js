@@ -4,6 +4,7 @@ const connectDB = require("./config/db");
 const logger = require("./config/logger");
 const config = require("./config/env");
 const orderSyncService = require("./services/orderSync");
+const orderStatusScheduler = require("./schedulers/orderStatusScheduler");
 
 // Global flag to track DB connection status
 let isDbConnected = false;
@@ -19,6 +20,9 @@ const initializeDB = async () => {
     if (config.env === "production") {
       orderSyncService.schedulePeriodicSync(5);
     }
+
+    // Start order status update scheduler (every 4 hours)
+    orderStatusScheduler.scheduleOrderStatusUpdates();
   } catch (error) {
     logger.error("Failed to connect to database:", error);
     isDbConnected = false;

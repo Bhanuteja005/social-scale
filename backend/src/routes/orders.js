@@ -7,6 +7,9 @@ const roles = require("../config/roles");
 
 router.use(authenticate);
 
+// Get Fampage services
+router.get("/services", orderController.getFampageServices);
+
 // SUPER_ADMIN can create orders for any company, COMPANY_USER can create for their company
 router.post("/", 
   authorize([roles.SUPER_ADMIN, roles.COMPANY_USER]), 

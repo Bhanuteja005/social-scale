@@ -2,6 +2,9 @@ const Joi = require("joi");
 const roles = require("../config/roles");
 
 const registerSchema = Joi.object({
+  name: Joi.string().optional().messages({
+    "string.base": "Name must be a string",
+  }),
   email: Joi.string().email().required().messages({
     "string.email": "Please provide a valid email address",
     "any.required": "Email is required",
@@ -10,9 +13,8 @@ const registerSchema = Joi.object({
     "string.min": "Password must be at least 8 characters long",
     "any.required": "Password is required",
   }),
-  role: Joi.string().valid(...roles.getAll()).required().messages({
+  role: Joi.string().valid(...roles.getAll()).optional().default(roles.COMPANY_USER).messages({
     "any.only": "Invalid role specified",
-    "any.required": "Role is required",
   }),
   companyId: Joi.string().optional().messages({
     "string.base": "Company ID must be a string",

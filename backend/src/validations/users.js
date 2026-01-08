@@ -73,6 +73,30 @@ const validateUpdate = (req, res, next) => {
       .messages({
         "any.only": "Invalid status specified",
       }),
+    profile: Joi.object({
+      userType: Joi.string()
+        .valid('creator', 'business', 'agency')
+        .messages({
+          "any.only": "Invalid user type specified",
+        }),
+      stage: Joi.string()
+        .valid('starter', 'scaling', 'monetizing')
+        .messages({
+          "any.only": "Invalid stage specified",
+        }),
+      industry: Joi.string()
+        .valid('fashion', 'lifestyle', 'fitness', 'entertainment', 'business', 'other')
+        .messages({
+          "any.only": "Invalid industry specified",
+        }),
+      goal: Joi.string()
+        .valid('growth', 'engagement', 'visibility')
+        .messages({
+          "any.only": "Invalid goal specified",
+        }),
+    }).messages({
+      "object.base": "Profile must be an object",
+    }),
   });
 
   const { error } = schema.validate(req.body);

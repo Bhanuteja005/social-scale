@@ -109,6 +109,21 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const googleAuthCallback = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const tokens = await authService.generateTokens(user);
+
+    // Redirect to frontend with tokens
+    const config = require("../config/env");
+    const redirectUrl = `${config.frontendUrl}/auth/callback?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
+
+    res.redirect(redirectUrl);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -117,4 +132,5 @@ module.exports = {
   changePassword,
   forgotPassword,
   resetPassword,
+  googleAuthCallback,
 };

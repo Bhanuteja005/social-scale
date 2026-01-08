@@ -81,6 +81,21 @@ const updateUser = async (req, res, next) => {
   }
 };
 
+const updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const user = await userService.updateUser(userId, req.body);
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -101,5 +116,6 @@ module.exports = {
   getAllUsers,
   getCompanyUsers,
   updateUser,
+  updateProfile,
   deleteUser,
 };

@@ -1,70 +1,17 @@
 const Joi = require("joi");
 
 const createOrderSchema = Joi.object({
-  companyId: Joi.string().required().messages({
-    "any.required": "Company ID is required",
+  service: Joi.string().required().messages({
+    "any.required": "Service is required",
   }),
-  providerId: Joi.string().required().messages({
-    "any.required": "Provider ID is required",
-  }),
-  apiOrderId: Joi.string().required().messages({
-    "any.required": "API Order ID is required",
-  }),
-  serviceId: Joi.number().integer().required().messages({
-    "any.required": "Service ID is required",
-  }),
-  serviceName: Joi.string().required().messages({
-    "any.required": "Service name is required",
-  }),
-  serviceType: Joi.string()
-    .valid(
-      "like",
-      "subscribe",
-      "comment",
-      "like_to_comment",
-      "dislike",
-      "dislike_to_comment",
-      "repost",
-      "friend",
-      "vote",
-      "retweet",
-      "follow",
-      "favorite"
-    )
-    .required()
-    .messages({
-      "any.required": "Service type is required",
-    }),
-  targetUrl: Joi.string().required().messages({
-    "any.required": "Target URL is required",
+  link: Joi.string().required().messages({
+    "any.required": "Link is required",
   }),
   quantity: Joi.number().integer().min(1).required().messages({
     "any.required": "Quantity is required",
     "number.min": "Quantity must be at least 1",
   }),
-  cost: Joi.number().min(0).optional(),
-  status: Joi.string()
-    .valid(
-      "pending",
-      "in_progress",
-      "completed",
-      "partial",
-      "awaiting",
-      "canceled",
-      "fail"
-    )
-    .optional(),
-  stats: Joi.object({
-    before: Joi.object({
-      count: Joi.number().optional(),
-      capturedAt: Joi.date().optional(),
-    }).optional(),
-    after: Joi.object({
-      count: Joi.number().optional(),
-      capturedAt: Joi.date().optional(),
-    }).optional(),
-  }).optional(),
-  metadata: Joi.object().optional(),
+  notes: Joi.string().optional(),
 });
 
 const updateOrderStatusSchema = Joi.object({

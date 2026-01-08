@@ -28,7 +28,7 @@ const generateTokens = (user) => {
 };
 
 const register = async (userData) => {
-  const { email, password, role = roles.COMPANY_USER, companyId } = userData;
+  const { name, email, password, role = roles.COMPANY_USER, companyId } = userData;
 
   // Validate role
   if (!roles.getAll().includes(role)) {
@@ -60,6 +60,7 @@ const register = async (userData) => {
   }
 
   const user = await User.create({
+    name,
     email,
     password,
     role,

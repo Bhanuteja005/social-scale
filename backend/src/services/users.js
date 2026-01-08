@@ -129,6 +129,9 @@ const updateUser = async (userId, updateData) => {
   if (role) user.role = role;
   if (companyId !== undefined) user.companyId = companyId;
   if (status) user.status = status;
+  if (updateData.profile) {
+    user.profile = { ...user.profile, ...updateData.profile };
+  }
 
   await user.save();
   return user.toJSON();

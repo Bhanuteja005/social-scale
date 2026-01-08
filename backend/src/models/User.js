@@ -91,6 +91,31 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    profile: {
+      userType: {
+        type: String,
+        enum: ['creator', 'business', 'agency'],
+      },
+      stage: {
+        type: String,
+        enum: ['starter', 'scaling', 'monetizing'],
+      },
+      industry: {
+        type: String,
+        enum: ['fashion', 'lifestyle', 'fitness', 'entertainment', 'business', 'other'],
+      },
+      goal: {
+        type: String,
+        enum: ['growth', 'engagement', 'visibility'],
+      },
+      googleId: {
+        type: String,
+        sparse: true,
+      },
+      googleProfile: {
+        type: mongoose.Schema.Types.Mixed,
+      },
+    },
     createdAt: {
       type: Date,
       default: Date.now,
