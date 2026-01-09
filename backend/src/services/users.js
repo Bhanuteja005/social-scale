@@ -114,7 +114,7 @@ const updateUser = async (userId, updateData) => {
     throw new NotFoundError("User");
   }
 
-  const { email, role, companyId, status } = updateData;
+  const { email, role, companyId, status, credits } = updateData;
 
   // Check email uniqueness if changing email
   if (email && email !== user.email) {
@@ -131,6 +131,9 @@ const updateUser = async (userId, updateData) => {
   if (status) user.status = status;
   if (updateData.profile) {
     user.profile = { ...user.profile, ...updateData.profile };
+  }
+  if (credits) {
+    user.credits = { ...user.credits, ...credits };
   }
 
   await user.save();

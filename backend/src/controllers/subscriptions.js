@@ -1,4 +1,5 @@
 const subscriptionService = require("../services/subscriptions");
+const notificationService = require("../services/notifications");
 const { AppError } = require("../utils/errors");
 const config = require("../config/env");
 const crypto = require("crypto");
@@ -22,6 +23,7 @@ exports.getPricingPlans = async (req, res) => {
   // Return all plans
   const growth = await subscriptionService.getPlanPricing(userId, "growth");
   const enterprise = await subscriptionService.getPlanPricing(userId, "enterprise");
+  const test = await subscriptionService.getPlanPricing(userId, "test");
 
   res.json({
     success: true,
@@ -36,18 +38,25 @@ exports.getPricingPlans = async (req, res) => {
           features: ["Access 3 Platforms", "Up to 500 Credits"],
         },
         {
+          plan: "test",
+          name: "Test Plan (Dev Only)",
+          ...test,
+          amount: test.price,
+          features: ["Test plan", "2500 Credits for ₹1"],
+        },
+        {
           plan: "growth",
           name: "Growth",
           ...growth,
           amount: growth.price,
-          features: ["Access 7 Platforms", "Scale to 20k Credits", "Priority Support"],
+          features: ["Access 7 Platforms", "2500 Credits", "Priority Support"],
         },
         {
           plan: "enterprise",
           name: "Enterprise",
           ...enterprise,
           amount: enterprise.price,
-          features: ["All Platforms", "Unlimited Credits", "24/7 Support", "Custom Pricing"],
+          features: ["All Platforms", "10000 Credits", "24/7 Support", "Priority Processing"],
         },
       ],
     },
@@ -55,32 +64,57 @@ exports.getPricingPlans = async (req, res) => {
 };
 
 // Create subscription
-exports.createSubscription = async (req, res) => {
-  const userId = req.user._id;
-  const result = await subscriptionService.createSubscription(userId, req.body);
+exports.createSubscription = async (req, res, next) => {
+  try {
+    console.log('Create subscription request body:', req.body);
+    console.log('User from auth:', req.user?._id, req.user?.email);
+    const userId = req.user._id;
+    const result = await subscriptionService.createSubscription(userId, req.body);
 
-  res.status(201).json({
-    success: true,
-    data: result,
-  });
+    res.status(201).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Subscription creation error:', error);
+    next(error);
+  }
 };
 
 // Activate subscription (webhook from payment gateway)
-exports.activateSubscription = async (req, res) => {
-  const { subscriptionId, paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+exports.activateSubscription = async (req, res, next) => {
+  try {
+    console.log('Activate subscription request:', req.body);
+    const { subscriptionId, paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
 
-  const result = await subscriptionService.activateSubscription(subscriptionId, {
-    paymentId,
-    razorpayOrderId,
-    razorpayPaymentId,
-    razorpaySignature,
-  });
+    if (!subscriptionId) {
+      throw new AppError('Subscription ID is required', 400);
+    }
 
-  res.json({
-    success: true,
-    data: result,
-    message: "Subscription activated successfully",
-  });
+    const result = await subscriptionService.activateSubscription(subscriptionId, {
+      paymentId,
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+    });
+
+    // Send payment success notification
+    if (result && result.user) {
+      await notificationService.notifyPaymentSuccess(result.user._id, {
+        subscription: result.subscription,
+        credits: result.subscription.credits
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.subscription,
+      message: "Subscription activated successfully",
+    });
+  } catch (error) {
+    console.error('Subscription activation error:', error);
+    next(error);
+  }
 };
 
 // Get user subscriptions

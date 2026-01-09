@@ -48,7 +48,9 @@ const refreshToken = async (req, res, next) => {
 
 const getCurrentUser = async (req, res, next) => {
   try {
-    const user = await authService.getCurrentUser(req.user.userId);
+    // req.user is the full user object from authenticate middleware
+    const userId = req.user._id || req.user.userId;
+    const user = await authService.getCurrentUser(userId);
 
     res.status(200).json({
       success: true,

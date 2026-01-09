@@ -1,4 +1,5 @@
 const orderService = require("../services/orders");
+const notificationService = require("../services/notifications");
 const { getPaginationParams } = require("../utils/pagination");
 const { AppError } = require("../utils/errors");
 
@@ -47,6 +48,9 @@ const createOrder = async (req, res, next) => {
     
     // Pass userId for credit deduction
     const result = await orderService.createOrder(orderData, userId);
+
+    // Send notification
+    await notificationService.notifyOrderCreated(userId, result.order);
 
     res.status(201).json({
       success: true,
@@ -97,6 +101,13 @@ const updateOrderStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status, stats } = req.body;
     const order = await orderService.updateOrderStatus(id, status, stats);
+
+    // Send notification if order is completed
+    if (status === 'completed' && order.userId) {
+      await notificationService.notifyOrderCompleted(order.userId, order);
+    } else if (status === 'cancelled' || status === 'failed') {
+      await notificationService.notifyOrderFailed(order.userId, order, 'Order was cancelled or failed');
+    }
 
     res.status(200).json({
       success: true,

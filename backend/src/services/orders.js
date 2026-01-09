@@ -6,6 +6,7 @@ const { NotFoundError, AppError } = require("../utils/errors");
 const invoiceService = require("./invoices");
 const apiIntegrationService = require("./apiIntegrations");
 const pricingService = require("./pricing");
+const notificationService = require("./notifications");
 const logger = require("../config/logger");
 
 // Fampage API integration
@@ -194,11 +195,16 @@ const createOrder = async (
     '3294': 18,    // 0.018 credits per reel view
     '3651': 25,    // 0.025 credits per reel view
 
-    // Instagram Story Votes
-    '4031': 268,   // 0.268 credits per vote (Option A)
-    '4032': 268,   // 0.268 credits per vote (Option B)
-    '4033': 268,   // 0.268 credits per vote (Option C)
-    '4034': 268,   // 0.268 credits per vote (Option D)
+    // Instagram Story Votes (new)
+    '4035': 268,   // 0.268 credits per vote (Option A) - ₹26.8 for 100
+    '4036': 268,   // 0.268 credits per vote (Option B) - ₹26.8 for 100
+    '4037': 268,   // 0.268 credits per vote (Option C) - ₹26.8 for 100
+    '4038': 268,   // 0.268 credits per vote (Option D) - ₹26.8 for 100
+
+    // Instagram Live Views (new)
+    '4039': 104,   // 0.104 credits per view (15 mins) - ₹10.4 for 100
+    '4040': 209,   // 0.209 credits per view (30 mins) - ₹20.9 for 100
+    '4041': 430,   // 0.43 credits per view (60 mins) - ₹43 for 100
 
     // TikTok Followers
     '2779': 210,   // 0.21 credits per follower
@@ -317,7 +323,16 @@ const createOrder = async (
   // Deduct credits
   const balanceBefore = user.credits.balance;
   user.credits.balance -= creditsRequired;
+  user.credits.totalSpent += creditsRequired;
   await user.save();
+
+  // Check for low credits and notify
+  if (user.credits.balance < 100 && user.credits.balance > 0) {
+    // Send notification asynchronously (don't wait for it)
+    notificationService.notifyLowCredits(user._id, user.credits.balance).catch(err => 
+      logger.error('Failed to send low credits notification:', err)
+    );
+  }
 
   // Create order in Fampage
   let fampageOrderId = null;
@@ -376,6 +391,21 @@ const createOrder = async (
     paymentMethod: 'manual',
     orderId: order._id,
   });
+
+  // Auto-create invoice for the order
+  if (autoCreateInvoice) {
+    try {
+      await invoiceService.createInvoice(order._id, {
+        multiplier: invoiceMultiplier,
+        status: 'draft',
+        currency: 'INR',
+      });
+      logger.info(`Invoice auto-created for order: ${order._id}`);
+    } catch (error) {
+      logger.error(`Failed to auto-create invoice for order ${order._id}:`, error.message);
+      // Continue even if invoice creation fails
+    }
+  }
 
   logger.info(`Order created: ${order._id}, Fampage Order: ${fampageOrderId}, Credits: ${creditsRequired}`);
 

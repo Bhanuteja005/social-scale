@@ -8,7 +8,7 @@ async function checkUser() {
     await mongoose.connect(config.mongodb.uri);
     console.log("Connected to MongoDB");
 
-    const user = await User.findOne({ email: "bhanu@gmail.com" });
+    const user = await User.findOne({ email: "testuser@example.com" });
     if (user) {
       console.log("User found:");
       console.log(JSON.stringify(user, null, 2));
