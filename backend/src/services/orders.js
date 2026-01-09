@@ -396,9 +396,9 @@ const createOrder = async (
   if (autoCreateInvoice) {
     try {
       await invoiceService.createInvoice(order._id, {
-        multiplier: invoiceMultiplier,
-        status: 'draft',
-        currency: 'INR',
+        multiplier: 1, // No multiplier for credit-based invoices
+        status: 'paid', // Default to paid for credit-based
+        // Currency will default to USD for credit-based invoices
       });
       logger.info(`Invoice auto-created for order: ${order._id}`);
     } catch (error) {

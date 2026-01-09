@@ -25,31 +25,60 @@ const createInvoice = async (orderId, invoiceData = {}) => {
     throw new NotFoundError("Company");
   }
 
-  // Get multiplier (default 8, customizable)
-  const multiplier = invoiceData.multiplier || 8;
+  // For credit-based invoices, use credits instead of monetary amounts
+  const creditsUsed = order.creditsUsed || 0;
 
-  // Calculate base cost (order cost before multiplier)
-  const baseCost = order.cost || 0;
-  const unitPrice = baseCost / order.quantity || 0;
-
-  // Apply multiplier to calculate invoice amounts
-  const multipliedSubtotal = baseCost * multiplier;
-  const multipliedUnitPrice = unitPrice * multiplier;
-
-  // Calculate invoice items with multiplier applied
+  // Create invoice items showing credits used
   const items = [
     {
-      description: `${order.serviceName} - ${order.targetUrl}`,
+      description: `${order.serviceName} - ${order.targetUrl || 'N/A'}`,
       quantity: order.quantity,
-      unitPrice: multipliedUnitPrice,
-      total: multipliedSubtotal,
+      unitPrice: 0, // No monetary price
+      total: 0, // No monetary total
+      credits: creditsUsed,
     },
   ];
 
-  const subtotal = multipliedSubtotal;
-  const tax = invoiceData.tax || 0;
-  const discount = invoiceData.discount || 0;
-  const total = subtotal + tax - discount;
+  // Set all monetary values to 0 for credit-based invoices
+  const subtotal = 0;
+  const tax = 0;
+  const discount = 0;
+  const total = 0;
+
+  // Prepare metadata with payment and subscription details if available
+  const metadata = {
+    serviceType: order.serviceType,
+    targetUrl: order.targetUrl,
+    creditsUsed: creditsUsed,
+    orderType: 'service_order',
+    ...invoiceData.metadata,
+  };
+
+  // Add payment details if order has payment information
+  if (order.paymentId || order.status === 'completed') {
+    metadata.paymentDetails = {
+      paymentId: order.paymentId,
+      paymentMethod: order.paymentMethod || 'credits',
+      paymentStatus: order.status,
+      paidAt: order.updatedAt,
+    };
+  }
+
+  // Add subscription details if this is related to a subscription
+  if (order.subscriptionId) {
+    const Subscription = require("../models/Subscription");
+    const subscription = await Subscription.findById(order.subscriptionId);
+    if (subscription) {
+      metadata.subscriptionDetails = {
+        subscriptionId: subscription._id,
+        plan: subscription.plan,
+        credits: subscription.credits,
+        status: subscription.status,
+        startDate: subscription.startDate,
+        endDate: subscription.endDate,
+      };
+    }
+  }
 
   // Create invoice
   const invoice = await Invoice.create({
@@ -60,17 +89,12 @@ const createInvoice = async (orderId, invoiceData = {}) => {
     tax,
     discount,
     total,
-    multiplier,
-    currency: invoiceData.currency || order.stats?.currency || "USD",
-    status: invoiceData.status || "draft",
-    dueDate: invoiceData.dueDate || null,
-    notes: invoiceData.notes || "",
-    metadata: {
-      serviceType: order.serviceType,
-      targetUrl: order.targetUrl,
-      baseCost: baseCost, // Store original cost before multiplier
-      ...invoiceData.metadata,
-    },
+    multiplier: 1, // No multiplier for credit-based invoices
+    currency: "USD", // Always USD, no monetary amounts
+    status: invoiceData.status || "paid", // Default to paid for credit-based
+    dueDate: null, // No due date for credit-based invoices
+    notes: `Credits Used: ${creditsUsed} | ${invoiceData.notes || ""}`,
+    metadata,
   });
 
   // Link invoice to order

@@ -44,6 +44,11 @@ const invoiceSchema = new mongoose.Schema(
           required: true,
           min: 0,
         },
+        credits: {
+          type: Number,
+          default: 0,
+          min: 0,
+        },
       },
     ],
     subtotal: {

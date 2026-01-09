@@ -214,6 +214,55 @@ class SubscriptionService {
       },
     });
 
+    // Create invoice for subscription payment
+    try {
+      // Create a pseudo-order for invoice generation
+      const Order = require("../models/Order");
+      const subscriptionOrder = await Order.create({
+        companyId: user.companyId,
+        userId: user._id,
+        serviceId: `subscription_${subscription.plan}`,
+        serviceName: `Subscription: ${subscription.plan} Plan`,
+        serviceType: "subscription",
+        link: "N/A",
+        quantity: 1,
+        creditsUsed: subscription.credits,
+        cost: subscription.price,
+        status: "completed",
+        paymentId,
+        paymentMethod: subscription.paymentMethod,
+        subscriptionId: subscription._id,
+        metadata: {
+          subscriptionDetails: {
+            plan: subscription.plan,
+            credits: subscription.credits,
+            price: subscription.price,
+            currency: subscription.currency,
+            billingCycle: subscription.billingCycle,
+            startDate: subscription.startDate,
+            endDate: subscription.endDate,
+          },
+          paymentDetails: {
+            paymentId,
+            paymentMethod: subscription.paymentMethod,
+            paidAt: new Date(),
+          }
+        }
+      });
+
+      // Create invoice for the subscription order
+      const invoiceService = require("./invoices");
+      await invoiceService.createInvoice(subscriptionOrder._id, {
+        status: 'paid',
+        notes: `Subscription payment for ${subscription.plan} plan - ${subscription.credits} credits`,
+      });
+
+      logger.info(`Invoice created for subscription: ${subscription._id}`);
+    } catch (error) {
+      logger.error(`Failed to create invoice for subscription ${subscription._id}:`, error.message);
+      // Continue even if invoice creation fails
+    }
+
     logger.info(`Subscription activated: ${subscriptionId}, Credits added: ${subscription.credits}`);
 
     return { subscription, user };
