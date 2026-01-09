@@ -49,7 +49,7 @@ module.exports = {
     callbackUrl: process.env.GOOGLE_CALLBACK_URL || "https://social-scale.vercel.app/api/v1/auth/google/callback",
   },
 
-  frontendUrl: process.env.FRONTEND_URL,
+  frontendUrl: process.env.FRONTEND_URL || "https://www.socialscale.agency",
 
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
