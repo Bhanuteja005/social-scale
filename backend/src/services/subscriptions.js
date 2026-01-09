@@ -106,8 +106,8 @@ class SubscriptionService {
     let razorpayOrder = null;
     if (paymentMethod === "razorpay") {
       razorpayOrder = await this.createRazorpayOrder({
-        amount: Math.round(pricing.price * 100), // Convert to paise
-        currency: pricing.currency || "INR",
+        amount: Math.round(pricing.price * 100), // Convert to paise (₹1 = 100 paise)
+        currency: "INR", // Always INR for Razorpay
       });
     }
 
@@ -166,13 +166,14 @@ class SubscriptionService {
 
     const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = paymentData;
 
-    // Verify Razorpay payment if signature provided (skip for test payments)
+    // Verify Razorpay payment if signature provided (skip for test payments or test plan)
     const isTestPayment = paymentId && paymentId.includes('test');
-    if (razorpaySignature && razorpayOrderId && razorpayPaymentId && !isTestPayment) {
+    const isTestPlan = subscription.plan === 'test';
+    if (razorpaySignature && razorpayOrderId && razorpayPaymentId && !isTestPayment && !isTestPlan) {
       console.log('Verifying real Razorpay payment...');
       await this.verifyRazorpayPayment(razorpayPaymentId, razorpayOrderId, razorpaySignature);
-    } else if (isTestPayment) {
-      logger.info('Skipping verification for test payment');
+    } else if (isTestPayment || isTestPlan) {
+      logger.info('Skipping verification for test payment or test plan');
     }
 
     // Update subscription status
