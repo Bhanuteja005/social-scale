@@ -825,8 +825,71 @@ const updateAllOrderStatuses = async () => {
   }
 };
 
+const createMassOrder = async (ordersText, userId) => {
+  const results = {
+    successfulOrders: [],
+    failedOrders: [],
+    totalCreditsDeducted: 0,
+  };
+
+  // Parse the orders text
+  const lines = ordersText.trim().split('\n').filter(line => line.trim());
+  
+  for (const line of lines) {
+    try {
+      // Parse line: "service_id | link | quantity"
+      const parts = line.split('|').map(part => part.trim());
+      
+      if (parts.length !== 3) {
+        results.failedOrders.push({
+          line,
+          error: 'Invalid format. Expected: service_id | link | quantity'
+        });
+        continue;
+      }
+
+      const [serviceId, link, quantityStr] = parts;
+      const quantity = parseInt(quantityStr);
+
+      if (!serviceId || !link || isNaN(quantity)) {
+        results.failedOrders.push({
+          line,
+          error: 'Invalid data. Service ID, link, and quantity are required.'
+        });
+        continue;
+      }
+
+      // Create individual order
+      const orderData = {
+        service: serviceId,
+        link: link,
+        quantity: quantity,
+      };
+
+      const result = await createOrder(orderData, userId, false); // Don't auto-create invoice for mass orders
+      
+      results.successfulOrders.push({
+        order: result.order,
+        creditsDeducted: result.creditsDeducted,
+        fampageOrderId: result.fampageOrderId,
+      });
+      
+      results.totalCreditsDeducted += result.creditsDeducted;
+      
+    } catch (error) {
+      results.failedOrders.push({
+        line,
+        error: error.message
+      });
+    }
+  }
+
+  return results;
+};
+
 module.exports = {
   createOrder,
+  createMassOrder,
   getOrderById,
   getAllOrders,
   updateOrderStatus,

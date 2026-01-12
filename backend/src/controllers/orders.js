@@ -62,6 +62,23 @@ const createOrder = async (req, res, next) => {
   }
 };
 
+const createMassOrder = async (req, res, next) => {
+  try {
+    const { orders } = req.body;
+    const userId = req.user._id;
+    
+    const result = await orderService.createMassOrder(orders, userId);
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully created ${result.successfulOrders.length} orders`,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getOrderById = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -179,6 +196,7 @@ const getOrderStatistics = async (req, res, next) => {
 
 module.exports = {
   createOrder,
+  createMassOrder,
   getOrderById,
   getAllOrders,
   updateOrderStatus,

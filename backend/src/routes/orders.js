@@ -17,6 +17,13 @@ router.post("/",
   orderController.createOrder
 );
 
+// Mass order endpoint
+router.post("/mass", 
+  authorize([roles.SUPER_ADMIN, roles.COMPANY_USER]), 
+  orderValidation.validateMassCreate, 
+  orderController.createMassOrder
+);
+
 // Company users can view their own orders
 router.get("/", scopedByCompany, orderController.getAllOrders);
 router.get("/stats", scopedByCompany, orderController.getOrderStatistics);

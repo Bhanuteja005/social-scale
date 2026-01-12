@@ -14,6 +14,12 @@ const createOrderSchema = Joi.object({
   notes: Joi.string().optional(),
 });
 
+const createMassOrderSchema = Joi.object({
+  orders: Joi.string().required().messages({
+    "any.required": "Orders text is required",
+  }),
+});
+
 const updateOrderStatusSchema = Joi.object({
   status: Joi.string()
     .valid(
@@ -70,6 +76,7 @@ const validate = (schema) => {
 
 module.exports = {
   validateCreate: validate(createOrderSchema),
+  validateMassCreate: validate(createMassOrderSchema),
   validateUpdateStatus: validate(updateOrderStatusSchema),
   validateUpdateStats: validate(updateOrderStatsSchema),
 };
