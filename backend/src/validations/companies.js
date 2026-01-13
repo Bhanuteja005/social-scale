@@ -30,11 +30,17 @@ const createCompanySchema = Joi.object({
       country: Joi.string().allow(null, "").optional(),
     }).optional(),
   }).optional(),
+  status: Joi.string().valid("active", "inactive", "suspended").optional().messages({
+    "any.only": "Status must be active, inactive, or suspended",
+  }),
   settings: Joi.object({
     timezone: Joi.string().optional(),
     currency: Joi.string().length(3).optional(),
     invoiceMultiplier: Joi.number().min(1).optional(),
   }).optional(),
+  status: Joi.string().valid("active", "inactive", "suspended").optional().messages({
+    "any.only": "Status must be active, inactive, or suspended",
+  }),
 });
 
 const updateCompanySchema = Joi.object({

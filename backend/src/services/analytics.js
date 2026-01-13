@@ -1,6 +1,8 @@
 const Order = require("../models/Order");
 const Invoice = require("../models/Invoice");
 const Company = require("../models/Company");
+const User = require("../models/User");
+const Transaction = require("../models/Transaction");
 
 const getCompanyAnalytics = async (companyId = null, filters = {}) => {
   const matchFilter = {};
@@ -56,7 +58,7 @@ const getCompanyAnalytics = async (companyId = null, filters = {}) => {
         count: { $sum: 1 },
         totalQuantity: { $sum: "$quantity" },
         realCost: { $sum: "$cost" }, // Real cost paid to Fampage
-        revenue: { $sum: "$invoice.total" }, // Revenue from invoices (what we charged)
+        revenue: { $sum: "$creditsUsed" }, // Revenue from credits used (what customers paid in credits)
         targetUrls: { $addToSet: "$targetUrl" },
       },
     },
@@ -152,13 +154,13 @@ const getCompanyAnalytics = async (companyId = null, filters = {}) => {
       return {
         ...orderJson,
         realCost: orderJson.cost, // Cost paid to Fampage
-        revenue: invoice?.total || 0, // Revenue from invoice
-        profit: invoice ? invoice.total - orderJson.cost : 0, // Profit for this order
+        revenue: orderJson.creditsUsed || 0, // Revenue from credits used (what customers paid)
+        profit: (orderJson.creditsUsed || 0) - orderJson.cost, // Profit for this order
         profitMargin:
-          invoice && invoice.total > 0
+          orderJson.creditsUsed && orderJson.creditsUsed > 0
             ? parseFloat(
                 (
-                  ((invoice.total - orderJson.cost) / invoice.total) *
+                  ((orderJson.creditsUsed - orderJson.cost) / orderJson.creditsUsed) *
                   100
                 ).toFixed(2)
               )
@@ -456,9 +458,80 @@ const getStatisticsSummary = async (companyId = null, filters = {}) => {
   };
 };
 
+const getUserGrowthAnalytics = async (filters = {}) => {
+  const matchFilter = {};
+
+  if (filters.startDate || filters.endDate) {
+    matchFilter.createdAt = {};
+    if (filters.startDate) {
+      matchFilter.createdAt.$gte = new Date(filters.startDate);
+    }
+    if (filters.endDate) {
+      matchFilter.createdAt.$lte = new Date(filters.endDate);
+    }
+  }
+
+  // Get user registration data grouped by month
+  const userGrowthPipeline = [
+    { $match: matchFilter },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" }
+        },
+        newUsers: { $sum: 1 },
+        activeUsers: {
+          $sum: {
+            $cond: [
+              { $eq: ["$status", "active"] },
+              1,
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        year: "$_id.year",
+        month: "$_id.month",
+        newUsers: "$newUsers",
+        activeUsers: "$activeUsers",
+        monthName: {
+          $arrayElemAt: [
+            ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+            "$_id.month"
+          ]
+        }
+      }
+    },
+    { $sort: { year: 1, month: 1 } }
+  ];
+
+  const userGrowthData = await User.aggregate(userGrowthPipeline);
+
+  // Convert to the format expected by the frontend
+  const monthlyData = {};
+  userGrowthData.forEach(item => {
+    const monthKey = `${item.monthName} ${item.year}`;
+    monthlyData[monthKey] = {
+      newUsers: item.newUsers,
+      activeUsers: item.activeUsers
+    };
+  });
+
+  return {
+    monthly: userGrowthData,
+    chartData: monthlyData
+  };
+};
+
 module.exports = {
   getCompanyAnalytics,
   getOrderDetailsByTarget,
   getCompanyOrderHistory,
   getStatisticsSummary,
+  getUserGrowthAnalytics,
 };

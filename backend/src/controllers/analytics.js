@@ -84,9 +84,23 @@ const getStatisticsSummary = async (req, res, next) => {
   }
 };
 
+const getUserGrowthAnalytics = async (req, res, next) => {
+  try {
+    const analytics = await analyticsService.getUserGrowthAnalytics(req.query);
+
+    res.status(200).json({
+      success: true,
+      data: analytics,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCompanyAnalytics,
   getOrderDetailsByTarget,
   getCompanyOrderHistory,
   getStatisticsSummary,
+  getUserGrowthAnalytics,
 };

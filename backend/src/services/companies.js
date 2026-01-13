@@ -32,15 +32,36 @@ const getAllCompanies = async (query, userRole, userCompanyId) => {
     filter.companyId = userCompanyId;
   }
 
-  const companies = await Company.find(filter)
-    .skip(skip)
-    .limit(limit)
-    .sort({ createdAt: -1 });
+  // Use aggregation to include social profile count
+  const companies = await Company.aggregate([
+    { $match: filter },
+    {
+      $lookup: {
+        from: 'socialaccounts', // MongoDB collection name (lowercase + 's')
+        localField: '_id',
+        foreignField: 'companyId',
+        as: 'socialProfiles'
+      }
+    },
+    {
+      $addFields: {
+        socialProfilesCount: { $size: '$socialProfiles' }
+      }
+    },
+    {
+      $project: {
+        socialProfiles: 0 // Remove the full socialProfiles array, just keep count
+      }
+    },
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit }
+  ]);
 
   const total = await Company.countDocuments(filter);
 
   return {
-    companies: companies.map((c) => c.toJSON()),
+    companies: companies,
     pagination: {
       page,
       limit,

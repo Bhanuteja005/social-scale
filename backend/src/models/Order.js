@@ -28,6 +28,22 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: [true, "Service name is required"],
     },
+    platform: {
+      type: String,
+      required: [true, "Platform is required"],
+      enum: [
+        "instagram",
+        "tiktok",
+        "youtube",
+        "facebook",
+        "twitter",
+        "linkedin",
+        "threads",
+        "other"
+      ],
+      default: "other",
+      index: true,
+    },
     serviceType: {
       type: String,
       enum: [

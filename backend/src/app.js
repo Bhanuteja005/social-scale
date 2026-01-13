@@ -19,6 +19,7 @@ const subscriptionRoutes = require("./routes/subscriptions");
 const pricingRoutes = require("./routes/pricing");
 const orderSyncRoutes = require("./routes/orderSync");
 const notificationRoutes = require("./routes/notifications");
+const socialAccountRoutes = require("./routes/socialAccounts");
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use(`${apiVersion}/subscriptions`, subscriptionRoutes);
 app.use(`${apiVersion}/pricing`, pricingRoutes);
 app.use(`${apiVersion}/order-sync`, orderSyncRoutes);
 app.use(`${apiVersion}/notifications`, notificationRoutes);
+app.use(`${apiVersion}/social-accounts`, socialAccountRoutes);
 
 // Root route
 app.get("/", (req, res) => {

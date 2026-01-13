@@ -9,6 +9,7 @@ router.use(authenticate);
 // SUPER_ADMIN can access all analytics
 router.get("/dashboard", authorize(roles.SUPER_ADMIN), analyticsController.getStatisticsSummary);
 router.get("/stats", authorize(roles.SUPER_ADMIN), analyticsController.getStatisticsSummary);
+router.get("/user-growth", authorize(roles.SUPER_ADMIN), analyticsController.getUserGrowthAnalytics);
 
 // Company users can access their own analytics
 router.get("/", scopedByCompany, analyticsController.getCompanyAnalytics);
