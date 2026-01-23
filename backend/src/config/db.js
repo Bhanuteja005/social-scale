@@ -3,7 +3,7 @@ const logger = require("./logger");
 const config = require("./env");
 
 // Set global mongoose options
-mongoose.set('bufferTimeoutMS', 30000);
+mongoose.set('bufferTimeoutMS', 60000);
 
 const connectDB = async () => {
   try {
@@ -12,7 +12,8 @@ const connectDB = async () => {
       useUnifiedTopology: true,
       serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
       socketTimeoutMS: 45000, // Socket timeout
-      bufferTimeoutMS: 30000, // Buffer timeout
+      bufferTimeoutMS: 60000, // Buffer timeout 60 seconds
+      connectTimeoutMS: 30000, // Connection timeout
       maxPoolSize: 10, // Maintain up to 10 socket connections
     });
 
