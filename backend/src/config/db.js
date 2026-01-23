@@ -3,17 +3,17 @@ const logger = require("./logger");
 const config = require("./env");
 
 // Set global mongoose options
-mongoose.set('bufferTimeoutMS', 60000);
+mongoose.set('bufferTimeoutMS', 120000);
+mongoose.set('bufferCommands', true);
 
-const connectDB = async () => {
+const connectDB = async (retries = 3) => {
   try {
     const conn = await mongoose.connect(config.mongodb.uri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
-      socketTimeoutMS: 45000, // Socket timeout
-      bufferTimeoutMS: 60000, // Buffer timeout 60 seconds
-      connectTimeoutMS: 30000, // Connection timeout
+      serverSelectionTimeoutMS: 120000, // Increase timeout to 120 seconds
+      socketTimeoutMS: 120000, // Socket timeout
+      connectTimeoutMS: 120000, // Connection timeout
       maxPoolSize: 10, // Maintain up to 10 socket connections
     });
 
@@ -30,6 +30,11 @@ const connectDB = async () => {
     return conn;
   } catch (error) {
     logger.error(`MongoDB connection failed: ${error.message}`);
+    if (retries > 0) {
+      logger.info(`Retrying connection... ${retries} attempts left`);
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+      return connectDB(retries - 1);
+    }
     throw error; // Throw instead of exit for serverless
   }
 };
