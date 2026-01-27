@@ -45,12 +45,41 @@ const register = async (userData) => {
       );
     }
     // SUPER_ADMIN doesn't need companyId
-  } else if (companyId) {
-    // If companyId is provided, verify it exists
-    const Company = require("../models/Company");
-    const company = await Company.findOne({ companyId, deletedAt: null });
-    if (!company) {
-      throw new AppError("Invalid company ID or company not found", 400);
+  } else if (role === roles.COMPANY_USER || role === roles.COMPANY_ADMIN) {
+    // For COMPANY_USER and COMPANY_ADMIN, ensure they have a companyId
+    if (companyId) {
+      // If companyId is provided, verify it exists
+      const Company = require("../models/Company");
+      const company = await Company.findOne({ companyId, deletedAt: null });
+      if (!company) {
+        throw new AppError("Invalid company ID or company not found", 400);
+      }
+    } else {
+      // Auto-assign to default company if no companyId provided
+      const Company = require("../models/Company");
+      let defaultCompany = await Company.findOne({ name: "Default Company", deletedAt: null });
+      
+      if (!defaultCompany) {
+        // Create default company if it doesn't exist
+        defaultCompany = await Company.create({
+          name: "Default Company",
+          notes: "Auto-created company for new user registrations",
+          address: {
+            street: "N/A",
+            city: "N/A",
+            state: "N/A",
+            zipCode: "000000",
+            country: "India",
+          },
+          billingDetails: {
+            gstin: "N/A",
+            billingEmail: "billing@socialscale.com",
+          },
+          status: "active",
+        });
+      }
+      
+      userData.companyId = defaultCompany.companyId;
     }
   }
 
@@ -64,7 +93,7 @@ const register = async (userData) => {
     email,
     password,
     role,
-    companyId: role === roles.SUPER_ADMIN ? null : companyId,
+    companyId: role === roles.SUPER_ADMIN ? null : userData.companyId,
     status: "active",
   });
 

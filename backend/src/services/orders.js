@@ -136,7 +136,11 @@ const createOrder = async (
   autoCreateInvoice = true,
   invoiceMultiplier = 8
 ) => {
-  console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
+  console.log('Creating order with data:', {
+    service: orderData.service,
+    link: orderData.link,
+    quantity: orderData.quantity
+  });
 
   // Get user
   const user = await User.findById(userId);
@@ -144,10 +148,26 @@ const createOrder = async (
     throw new NotFoundError("User");
   }
 
-  // Check if user has companyId
-  if (!user.companyId) {
-    throw new AppError("Company ID not found", 400);
+  console.log('User found:', {
+    id: user._id,
+    email: user.email,
+    role: user.role,
+    companyId: user.companyId,
+    credits: user.credits?.balance
+  });
+
+  // Check if user has companyId (only for roles that require it)
+  const roles = require("../config/roles");
+  const requiresCompany = roles.requiresCompany(user.role);
+  
+  console.log('Requires company:', requiresCompany);
+  
+  if (requiresCompany && !user.companyId) {
+    throw new AppError("Company ID not found. Please contact your administrator to assign you to a company.", 400);
   }
+
+  // For SUPER_ADMIN, we don't need a company
+  const companyId = user.companyId || null;
 
   // Get Fampage service info
   const serviceInfo = await getServiceInfo(orderData.service);
@@ -351,7 +371,7 @@ const createOrder = async (
       throw new AppError('Failed to create order in Fampage', 500);
     }
   } catch (error) {
-    logger.error('Fampage API error:', error);
+    logger.error('Fampage API error:', error.response?.data || error.message);
     // Refund credits
     user.credits.balance = balanceBefore;
     await user.save();
@@ -373,7 +393,7 @@ const createOrder = async (
     cost: creditsRequired,
     status: 'pending',
     userId: user._id,
-    companyId: user.companyId,
+    companyId: companyId, // Use the determined companyId (null for SUPER_ADMIN)
     notes: orderData.notes,
     apiOrderId: String(fampageOrderId),
     providerId: '507f1f77bcf86cd799439011', // Placeholder for Fampage provider

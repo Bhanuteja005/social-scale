@@ -4,8 +4,9 @@ const orderSchema = new mongoose.Schema(
   {
     companyId: {
       type: String,
-      required: [true, "Company ID is required"],
+      required: false, // Not required for SUPER_ADMIN orders
       index: true,
+      default: null,
     },
     providerId: {
       type: mongoose.Schema.Types.ObjectId,
