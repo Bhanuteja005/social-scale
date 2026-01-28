@@ -20,6 +20,7 @@ const pricingRoutes = require("./routes/pricing");
 const orderSyncRoutes = require("./routes/orderSync");
 const notificationRoutes = require("./routes/notifications");
 const socialAccountRoutes = require("./routes/socialAccounts");
+const walletRoutes = require("./routes/wallet");
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use(`${apiVersion}/pricing`, pricingRoutes);
 app.use(`${apiVersion}/order-sync`, orderSyncRoutes);
 app.use(`${apiVersion}/notifications`, notificationRoutes);
 app.use(`${apiVersion}/social-accounts`, socialAccountRoutes);
+app.use(`${apiVersion}/wallet`, walletRoutes);
 
 // Root route
 app.get("/", (req, res) => {

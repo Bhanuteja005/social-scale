@@ -14,7 +14,19 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["credit_purchase", "credit_deduction", "credit_refund", "subscription_payment"],
+      enum: [
+        "wallet_credit", 
+        "wallet_debit", 
+        "order_payment", 
+        "refund", 
+        "subscription_payment",
+        // Legacy types for backwards compatibility
+        "credit_purchase",
+        "credit_deduction", 
+        "credit_refund",
+        "credit",
+        "debit"
+      ],
       required: true,
       index: true,
     },
@@ -24,11 +36,11 @@ const transactionSchema = new mongoose.Schema(
     },
     currency: {
       type: String,
-      default: "USD",
+      default: "INR",
     },
     credits: {
       type: Number,
-      required: true,
+      required: false,
     },
     balanceBefore: {
       type: Number,
@@ -61,6 +73,11 @@ const transactionSchema = new mongoose.Schema(
       sparse: true,
     },
     orderId: {
+      type: String,
+      index: true,
+      sparse: true,
+    },
+    relatedOrderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
       index: true,

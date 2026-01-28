@@ -25,31 +25,31 @@ const createInvoice = async (orderId, invoiceData = {}) => {
     throw new NotFoundError("Company");
   }
 
-  // For credit-based invoices, use credits instead of monetary amounts
-  const creditsUsed = order.creditsUsed || 0;
+  // Calculate invoice amounts from order cost
+  const orderCost = order.cost || 0;
+  const unitPrice = order.quantity > 0 ? orderCost / order.quantity : 0;
 
-  // Create invoice items showing credits used
+  // Create invoice items with actual INR amounts
   const items = [
     {
       description: `${order.serviceName} - ${order.targetUrl || 'N/A'}`,
       quantity: order.quantity,
-      unitPrice: 0, // No monetary price
-      total: 0, // No monetary total
-      credits: creditsUsed,
+      unitPrice: unitPrice,
+      total: orderCost,
     },
   ];
 
-  // Set all monetary values to 0 for credit-based invoices
-  const subtotal = 0;
+  // Set monetary values from order cost
+  const subtotal = orderCost;
   const tax = 0;
   const discount = 0;
-  const total = 0;
+  const total = orderCost;
 
   // Prepare metadata with payment and subscription details if available
   const metadata = {
     serviceType: order.serviceType,
     targetUrl: order.targetUrl,
-    creditsUsed: creditsUsed,
+    amount: orderCost,
     orderType: 'service_order',
     ...invoiceData.metadata,
   };
@@ -89,11 +89,11 @@ const createInvoice = async (orderId, invoiceData = {}) => {
     tax,
     discount,
     total,
-    multiplier: 1, // No multiplier for credit-based invoices
-    currency: "USD", // Always USD, no monetary amounts
-    status: invoiceData.status || "paid", // Default to paid for credit-based
-    dueDate: null, // No due date for credit-based invoices
-    notes: `Credits Used: ${creditsUsed} | ${invoiceData.notes || ""}`,
+    multiplier: 1,
+    currency: "INR",
+    status: invoiceData.status || "paid",
+    dueDate: null,
+    notes: `Amount: ₹${orderCost.toFixed(2)} | ${invoiceData.notes || ""}`,
     metadata,
   });
 

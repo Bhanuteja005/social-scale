@@ -39,13 +39,13 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       default: null,
     },
-    credits: {
+    wallet: {
       balance: {
         type: Number,
         default: 0,
         min: 0,
       },
-      totalPurchased: {
+      totalAdded: {
         type: Number,
         default: 0,
         min: 0,
@@ -54,24 +54,6 @@ const userSchema = new mongoose.Schema(
         type: Number,
         default: 0,
         min: 0,
-      },
-    },
-    subscription: {
-      plan: {
-        type: String,
-        enum: ["free", "growth", "enterprise", "test"],
-        default: "free",
-      },
-      status: {
-        type: String,
-        enum: ["active", "inactive", "canceled", "expired"],
-        default: "inactive",
-      },
-      startDate: Date,
-      endDate: Date,
-      autoRenew: {
-        type: Boolean,
-        default: false,
       },
     },
     status: {

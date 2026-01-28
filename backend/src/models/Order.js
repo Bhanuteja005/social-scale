@@ -80,11 +80,6 @@ const orderSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Cost cannot be negative"],
     },
-    creditsUsed: {
-      type: Number,
-      default: 0,
-      min: [0, "Credits cannot be negative"],
-    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

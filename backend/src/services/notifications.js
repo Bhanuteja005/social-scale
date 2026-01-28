@@ -26,7 +26,7 @@ class NotificationService {
       message: `Your order #${order._id.toString().slice(-6)} for ${order.serviceName} has been created successfully.`,
       metadata: {
         orderId: order._id,
-        credits: order.creditsUsed,
+        amount: order.amount,
       },
     });
   }
@@ -86,6 +86,18 @@ class NotificationService {
       message: `Your credit balance is low (${currentBalance} credits remaining). Please top up to continue placing orders.`,
       metadata: {
         credits: currentBalance,
+      },
+    });
+  }
+
+  // Create notification for low wallet balance
+  async notifyLowBalance(userId, currentBalance) {
+    return this.createNotification(userId, {
+      type: "warning",
+      title: "Low Wallet Balance",
+      message: `Your wallet balance is low (₹${currentBalance.toFixed(2)} remaining). Please add funds to continue placing orders.`,
+      metadata: {
+        balance: currentBalance,
       },
     });
   }

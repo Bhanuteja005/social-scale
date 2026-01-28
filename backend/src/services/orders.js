@@ -2,9 +2,9 @@ const Order = require("../models/Order");
 const Company = require("../models/Company");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
+const { ApiProvider } = require("../models/ApiProvider");
 const { NotFoundError, AppError } = require("../utils/errors");
 const invoiceService = require("./invoices");
-const apiIntegrationService = require("./apiIntegrations");
 const pricingService = require("./pricing");
 const notificationService = require("./notifications");
 const logger = require("../config/logger");
@@ -153,7 +153,7 @@ const createOrder = async (
     email: user.email,
     role: user.role,
     companyId: user.companyId,
-    credits: user.credits?.balance
+    wallet: user.wallet?.balance
   });
 
   // Check if user has companyId (only for roles that require it)
@@ -180,177 +180,25 @@ const createOrder = async (
     throw new AppError(`Quantity must be between ${serviceInfo.min} and ${serviceInfo.max}`, 400);
   }
 
-  // Calculate credits required - use user-facing rates, not Fampage rates
-  const userRates = {
-    // Instagram Followers
-    '2279': 5000,  // 5 credits per follower
-    '3703': 6000,  // 6 credits per follower
-    '3774': 7000,  // 7 credits per follower
-    '4301': 8000,  // 8 credits per follower
-    '4302': 10000, // 10 credits per follower
+  // Calculate cost in INR using Fampage rate
+  const costInINR = (orderData.quantity / 1000) * parseFloat(serviceInfo.rate);
 
-    // Instagram Likes
-    '3246': 300,   // 0.3 credits per like
-    '3724': 500,   // 0.5 credits per like
-
-    // Instagram Comments
-    '3463': 800,   // 0.8 credits per comment
-    '4219': 6000,  // 6 credits per comment
-
-    // Instagram Reposts
-    '4252': 1200,  // 1.2 credits per repost
-    '4279': 800,   // 0.8 credits per repost
-
-    // Instagram Channel Members
-    '3964': 150,   // 0.15 credits per member
-    '3971': 120,   // 0.12 credits per member
-
-    // Instagram Traffic/Views
-    '2495': 50,    // 0.05 credits per view
-    '2498': 75,    // 0.075 credits per view
-
-    // Instagram Reel Views
-    '3694': 7,     // 0.007 credits per reel view
-    '4030': 7,     // 0.007 credits per reel view
-    '3294': 18,    // 0.018 credits per reel view
-    '3651': 25,    // 0.025 credits per reel view
-
-    // Instagram Story Votes (new)
-    '4035': 268,   // 0.268 credits per vote (Option A) - ₹26.8 for 100
-    '4036': 268,   // 0.268 credits per vote (Option B) - ₹26.8 for 100
-    '4037': 268,   // 0.268 credits per vote (Option C) - ₹26.8 for 100
-    '4038': 268,   // 0.268 credits per vote (Option D) - ₹26.8 for 100
-
-    // Instagram Live Views (new)
-    '4039': 104,   // 0.104 credits per view (15 mins) - ₹10.4 for 100
-    '4040': 209,   // 0.209 credits per view (30 mins) - ₹20.9 for 100
-    '4041': 430,   // 0.43 credits per view (60 mins) - ₹43 for 100
-
-    // TikTok Followers
-    '2779': 210,   // 0.21 credits per follower
-    '2781': 290,   // 0.29 credits per follower
-    '2782': 250,   // 0.25 credits per follower
-
-    // TikTok Likes
-    '2130': 140,   // 0.14 credits per like
-
-    // TikTok Views
-    '2125': 5,     // 0.005 credits per view
-    '2127': 15,    // 0.015 credits per view
-    '2128': 10,    // 0.01 credits per view
-
-    // LinkedIn Followers
-    '4002': 20,    // 0.02 credits per follower
-
-    // LinkedIn Likes
-    '4005': 10,    // 0.01 credits per like
-
-    // LinkedIn Shares
-    '4006': 1200,  // 1.2 credits per share
-
-    // YouTube Subscribers
-    '2292': 850,   // 0.85 credits per subscriber
-    '2837': 1200,  // 1.2 credits per subscriber
-
-    // YouTube Views
-    '4293': 190,   // 0.19 credits per view (100 views package)
-    '3032': 770,   // 0.77 credits per view (500 views package)
-    '3718': 1490,  // 1.49 credits per view (1000 views package)
-    '4081': 3660,  // 1.22 credits per view (3000 views package)
-    '3546': 4200,  // 4.2 credits per view (with watchtime)
-    '3860': 280,   // 0.28 credits per view
-    '3985': 120,   // 0.12 credits per view
-    '3986': 115,   // 0.115 credits per view
-    '4148': 150,   // 0.15 credits per view
-
-    // YouTube Watch Time
-    '2349': 950,   // 0.95 credits per 1000 hours
-
-    // Twitter/X Followers
-    '3562': 320,   // 0.32 credits per follower
-    '3788': 480,   // 0.48 credits per follower
-
-    // Twitter/X Likes
-    '3909': 180,   // 0.18 credits per like
-
-    // Threads Followers
-    '3642': 150,   // 0.15 credits per follower
-
-    // Threads Likes
-    '3638': 240,   // 0.24 credits per like
-
-    // Threads Reshares
-    '3639': 600,   // 0.6 credits per reshare
-    '3640': 1100,  // 1.1 credits per reshare
-
-    // Threads Comments
-    '3641': 6000,  // 6 credits per comment
-
-    // Pinterest Followers
-    '2950': 1100,  // 1.1 credits per follower
-    '2953': 2700,  // 2.7 credits per follower
-
-    // Pinterest Likes
-    '2951': 1800,  // 1.8 credits per like
-
-    // Pinterest Repins
-    '2952': 1300,  // 1.3 credits per repin
-
-    // Facebook Likes
-    '2085': 970,   // 0.97 credits per like
-    '3251': 180,   // 0.18 credits per like
-
-    // Facebook Followers + Likes
-    '2517': 90,    // 0.09 credits per follower
-
-    // Facebook Views
-    '3391': 8,     // 0.008 credits per view
-    '3392': 37,    // 0.037 credits per view
-    '3394': 15,    // 0.015 credits per view
-    '4043': 10,    // 0.01 credits per view
-
-    // Spotify Followers
-    '3339': 42,    // 0.042 credits per follower
-    '3340': 42,    // 0.042 credits per follower
-    '3341': 68,    // 0.068 credits per follower
-    '3342': 42,    // 0.042 credits per follower
-    '3343': 40,    // 0.04 credits per follower
-
-    // Quora Followers
-    '3794': 1170,  // 1.17 credits per follower
-
-    // Quora Views
-    '3791': 221,   // 0.221 credits per view
-
-    // Quora Likes
-    '3792': 1124,  // 1.124 credits per like
-
-    // Quora Shares
-    '3793': 1124,  // 1.124 credits per share
-
-    // Quora Upvotes
-    '3795': 2654,  // 2.654 credits per upvote
-  };
-
-  const userRate = userRates[orderData.service] || parseFloat(serviceInfo.rate) * 10; // fallback
-  const creditsRequired = (orderData.quantity / 1000) * userRate;
-
-  // Check if user has enough credits
-  if (user.credits.balance < creditsRequired) {
-    throw new AppError(`Insufficient credits. Required: ${creditsRequired.toFixed(2)}, Available: ${user.credits.balance}`, 403);
+  // Check if user has enough balance
+  if (user.wallet.balance < costInINR) {
+    throw new AppError(`Insufficient balance. Required: ₹${costInINR.toFixed(2)}, Available: ₹${user.wallet.balance.toFixed(2)}`, 403);
   }
 
-  // Deduct credits
-  const balanceBefore = user.credits.balance;
-  user.credits.balance -= creditsRequired;
-  user.credits.totalSpent += creditsRequired;
+  // Deduct balance
+  const balanceBefore = user.wallet.balance;
+  user.wallet.balance -= costInINR;
+  user.wallet.totalSpent += costInINR;
   await user.save();
 
-  // Check for low credits and notify
-  if (user.credits.balance < 100 && user.credits.balance > 0) {
+  // Check for low balance and notify
+  if (user.wallet.balance < 100 && user.wallet.balance > 0) {
     // Send notification asynchronously (don't wait for it)
-    notificationService.notifyLowCredits(user._id, user.credits.balance).catch(err => 
-      logger.error('Failed to send low credits notification:', err)
+    notificationService.notifyLowBalance(user._id, user.wallet.balance).catch(err => 
+      logger.error('Failed to send low balance notification:', err)
     );
   }
 
@@ -358,67 +206,125 @@ const createOrder = async (
   let fampageOrderId = null;
   try {
     const url = `${config.fampage.baseUrl}?action=add&service=${orderData.service}&link=${encodeURIComponent(orderData.link)}&quantity=${orderData.quantity}&key=${config.fampage.apiKey}`;
+    logger.info(`Calling Fampage API: service=${orderData.service}, quantity=${orderData.quantity}`);
     const response = await axios.post(url);
+    
+    logger.info('Fampage API response:', response.data);
     
     if (response.data && response.data.order) {
       fampageOrderId = response.data.order;
       logger.info(`Fampage order created: ${fampageOrderId}`);
     } else {
       logger.error('Unexpected Fampage response:', response.data);
-      // Refund credits
-      user.credits.balance = balanceBefore;
+      // Refund balance
+      user.wallet.balance = balanceBefore;
+      user.wallet.totalSpent -= costInINR;
       await user.save();
+      logger.info(`Refunded ₹${costInINR} to user ${userId}`);
       throw new AppError('Failed to create order in Fampage', 500);
     }
   } catch (error) {
     logger.error('Fampage API error:', error.response?.data || error.message);
-    // Refund credits
-    user.credits.balance = balanceBefore;
-    await user.save();
+    // Refund balance if not already refunded
+    if (user.wallet.balance === balanceBefore - costInINR) {
+      user.wallet.balance = balanceBefore;
+      user.wallet.totalSpent -= costInINR;
+      await user.save();
+      logger.info(`Refunded ₹${costInINR} to user ${userId} after Fampage error`);
+    }
     throw new AppError(error.response?.data?.error || 'Failed to create order in Fampage', 500);
   }
 
   // Extract platform and service type from service name
   const { platform, serviceType } = extractServiceInfo(serviceInfo.name, serviceInfo.type);
 
+  // Get or create Fampage provider (avoid circular dependency with apiIntegrationService)
+  let providerId;
+  try {
+    let provider = await ApiProvider.findOne({
+      $or: [
+        { name: { $regex: /^fampage$/i } },
+        { baseUrl: { $regex: /fampage\.in/i } },
+      ],
+    });
+
+    if (!provider) {
+      provider = await ApiProvider.create({
+        name: "Fampage",
+        baseUrl: config.fampage.baseUrl,
+        apiKey: config.fampage.apiKey,
+        status: "active",
+      });
+      logger.info("Fampage provider created automatically");
+    }
+    
+    providerId = provider._id;
+  } catch (error) {
+    logger.error('Failed to get Fampage provider:', error);
+    // Refund if provider fetch fails
+    user.wallet.balance = balanceBefore;
+    user.wallet.totalSpent -= costInINR;
+    await user.save();
+    logger.info(`Refunded ₹${costInINR} to user ${userId} after provider error`);
+    throw new AppError('Failed to initialize provider', 500);
+  }
+
   // Create order in database
-  const order = await Order.create({
-    serviceId: orderData.service,
-    serviceName: serviceInfo.name,
-    serviceType: serviceType,
-    platform: platform,
-    targetUrl: orderData.link,
-    quantity: orderData.quantity,
-    creditsUsed: creditsRequired,
-    cost: creditsRequired,
-    status: 'pending',
-    userId: user._id,
-    companyId: companyId, // Use the determined companyId (null for SUPER_ADMIN)
-    notes: orderData.notes,
-    apiOrderId: String(fampageOrderId),
-    providerId: '507f1f77bcf86cd799439011', // Placeholder for Fampage provider
-  });
+  let order;
+  try {
+    order = await Order.create({
+      serviceId: orderData.service,
+      serviceName: serviceInfo.name,
+      serviceType: serviceType,
+      platform: platform,
+      targetUrl: orderData.link,
+      quantity: orderData.quantity,
+      cost: costInINR,
+      status: 'pending',
+      userId: user._id,
+      companyId: companyId, // Use the determined companyId (null for SUPER_ADMIN)
+      notes: orderData.notes,
+      apiOrderId: String(fampageOrderId),
+      providerId: providerId,
+    });
+    
+    logger.info(`Order created in database: ${order._id}`);
+  } catch (error) {
+    logger.error('Failed to create order in database:', error);
+    // Refund balance since Fampage order was created but DB order failed
+    user.wallet.balance = balanceBefore;
+    user.wallet.totalSpent -= costInINR;
+    await user.save();
+    logger.info(`Refunded ₹${costInINR} to user ${userId} after DB error`);
+    throw new AppError('Failed to save order to database', 500);
+  }
 
   // Create transaction record
-  await Transaction.create({
-    userId: user._id,
-    type: 'credit_deduction',
-    amount: creditsRequired,
-    credits: creditsRequired,
-    balanceBefore,
-    balanceAfter: user.credits.balance,
-    status: 'completed',
-    paymentMethod: 'manual',
-    orderId: order._id,
-  });
+  try {
+    await Transaction.create({
+      userId: user._id,
+      type: 'wallet_debit',
+      amount: costInINR,
+      currency: 'INR',
+      balanceBefore,
+      balanceAfter: user.wallet.balance,
+      status: 'completed',
+      paymentMethod: 'wallet',
+      relatedOrderId: order._id,
+      notes: `Order payment for ${serviceInfo.name} - Quantity: ${orderData.quantity}`,
+    });
+    logger.info(`Transaction created for order: ${order._id}`);
+  } catch (error) {
+    logger.error(`Failed to create transaction for order ${order._id}:`, error.message);
+    // Continue - transaction is for record-keeping, order is already created
+  }
 
   // Auto-create invoice for the order
   if (autoCreateInvoice) {
     try {
       await invoiceService.createInvoice(order._id, {
-        multiplier: 1, // No multiplier for credit-based invoices
-        status: 'paid', // Default to paid for credit-based
-        // Currency will default to USD for credit-based invoices
+        multiplier: 1,
+        status: 'paid',
       });
       logger.info(`Invoice auto-created for order: ${order._id}`);
     } catch (error) {
@@ -427,11 +333,11 @@ const createOrder = async (
     }
   }
 
-  logger.info(`Order created: ${order._id}, Fampage Order: ${fampageOrderId}, Credits: ${creditsRequired}`);
+  logger.info(`Order created: ${order._id}, Fampage Order: ${fampageOrderId}, Cost: ₹${costInINR.toFixed(2)}`);
 
   return {
     order,
-    creditsDeducted: creditsRequired,
+    cost: costInINR,
     fampageOrderId,
   };
 };
