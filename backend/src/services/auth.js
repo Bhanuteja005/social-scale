@@ -47,20 +47,22 @@ const register = async (userData) => {
     // SUPER_ADMIN doesn't need companyId
   } else if (role === roles.COMPANY_USER || role === roles.COMPANY_ADMIN) {
     // For COMPANY_USER and COMPANY_ADMIN, ensure they have a companyId
+    const Company = require("../models/Company");
+    
     if (companyId) {
       // If companyId is provided, verify it exists
-      const Company = require("../models/Company");
       const company = await Company.findOne({ companyId, deletedAt: null });
       if (!company) {
         throw new AppError("Invalid company ID or company not found", 400);
       }
+      userData.companyId = companyId;
     } else {
       // Auto-assign to default company if no companyId provided
-      const Company = require("../models/Company");
       let defaultCompany = await Company.findOne({ name: "Default Company", deletedAt: null });
       
       if (!defaultCompany) {
         // Create default company if it doesn't exist
+        console.log('Creating default company for new user...');
         defaultCompany = await Company.create({
           name: "Default Company",
           notes: "Auto-created company for new user registrations",
@@ -77,6 +79,9 @@ const register = async (userData) => {
           },
           status: "active",
         });
+        console.log(`Default company created with ID: ${defaultCompany.companyId}`);
+      } else {
+        console.log(`Using existing default company: ${defaultCompany.companyId}`);
       }
       
       userData.companyId = defaultCompany.companyId;

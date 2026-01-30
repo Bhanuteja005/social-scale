@@ -132,8 +132,50 @@ const getWalletBalance = async (userId) => {
   };
 };
 
+// Add funds directly (for testing and admin purposes)
+const addFunds = async (userId, amount, currency = 'INR', paymentId = null, notes = 'Manual fund addition') => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (amount <= 0) {
+    throw new AppError("Amount must be greater than 0", 400);
+  }
+
+  const balanceBefore = user.wallet.balance;
+  user.wallet.balance += amount;
+  user.wallet.totalAdded += amount;
+  await user.save();
+
+  // Create transaction record
+  const transaction = await Transaction.create({
+    userId: user._id,
+    type: "wallet_credit",
+    amount: amount,
+    currency: currency,
+    balanceBefore,
+    balanceAfter: user.wallet.balance,
+    status: "completed",
+    paymentMethod: paymentId ? "razorpay" : "manual",
+    paymentId: paymentId,
+    notes: notes,
+  });
+
+  logger.info(`Funds added: ₹${amount}, User: ${userId}, New Balance: ₹${user.wallet.balance}`);
+
+  return {
+    success: true,
+    amount,
+    newBalance: user.wallet.balance,
+    transaction,
+    user: user.toJSON(),
+  };
+};
+
 module.exports = {
   createPaymentOrder,
   verifyAndCompletePayment,
   getWalletBalance,
+  addFunds,
 };

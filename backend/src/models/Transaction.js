@@ -58,7 +58,7 @@ const transactionSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["mercury", "stripe", "manual", "admin", "razorpay"],
+      enum: ["mercury", "stripe", "manual", "admin", "razorpay", "wallet"],
       required: true,
     },
     paymentId: {
