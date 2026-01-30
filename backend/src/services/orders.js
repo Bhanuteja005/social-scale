@@ -477,13 +477,13 @@ const getAllOrders = async (query) => {
 
     const filter = {};
 
-    // User filter
-    if (query.userId && typeof query.userId === 'string') {
+    // User filter - CRITICAL: Filter by userId to show only user's own orders
+    if (query.userId) {
       filter.userId = query.userId;
     }
 
     // Company filter
-    if (query.companyId && typeof query.companyId === 'string') {
+    if (query.companyId) {
       filter.companyId = query.companyId;
     }
 
