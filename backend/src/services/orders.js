@@ -32,7 +32,11 @@ async function getFampageServices() {
     cacheTimestamp = now;
     return fampageServicesCache;
   } catch (error) {
-    logger.error('Failed to fetch Fampage services:', error);
+    logger.error('Failed to fetch services:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     return fampageServicesCache || []; // Return cache if available
   }
 }
@@ -49,7 +53,7 @@ async function checkOrderStatus(fampageOrderId) {
     const url = `${config.fampage.baseUrl}?action=status&key=${config.fampage.apiKey}&order=${fampageOrderId}`;
     const response = await axios.get(url);
 
-    logger.info(`Fampage API raw response for order ${fampageOrderId}:`, response.data);
+    logger.info(`API raw response for order ${fampageOrderId}:`, response.data);
 
     let statusData;
 
@@ -108,7 +112,11 @@ async function checkOrderStatus(fampageOrderId) {
     logger.warn(`No valid status data found for order ${fampageOrderId}`);
     return null;
   } catch (error) {
-    logger.error(`Failed to check order status for ${fampageOrderId}:`, error.response?.data || error.message);
+    logger.error(`Failed to check order status for ${fampageOrderId}:`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     return null;
   }
 }
@@ -172,7 +180,7 @@ const createOrder = async (
   // Get Fampage service info
   const serviceInfo = await getServiceInfo(orderData.service);
   if (!serviceInfo) {
-    throw new AppError("Service not found in Fampage", 400);
+    throw new AppError("Service not found. Please select a valid service.", 400);
   }
 
   // Validate quantity
@@ -188,51 +196,119 @@ const createOrder = async (
     throw new AppError(`Insufficient balance. Required: ₹${costInINR.toFixed(2)}, Available: ₹${user.wallet.balance.toFixed(2)}`, 403);
   }
 
-  // Deduct balance
+  // Try to create order FIRST without deducting balance (with retries)
+  let fampageOrderId = null;
+  let retryCount = 0;
+  const maxRetries = 3;
+  const retryDelay = 2000; // 2 seconds
+
+  while (retryCount < maxRetries && !fampageOrderId) {
+    try {
+      const url = `${config.fampage.baseUrl}?action=add&service=${orderData.service}&link=${encodeURIComponent(orderData.link)}&quantity=${orderData.quantity}&key=${config.fampage.apiKey}`;
+      logger.info(`Calling API (attempt ${retryCount + 1}/${maxRetries}): service=${orderData.service}, quantity=${orderData.quantity}`);
+      
+      const response = await axios.post(url, {}, {
+        timeout: 30000, // 30 second timeout
+        validateStatus: (status) => status < 500 // Don't throw on 4xx errors
+      });
+      
+      logger.info('API response:', response.data);
+      
+      if (response.data && response.data.order) {
+        fampageOrderId = response.data.order;
+        logger.info(`External order created successfully: ${fampageOrderId}`);
+        break; // Success, exit retry loop
+      } else if (response.data && response.data.error) {
+        // API returned an error (like invalid link, private profile, etc.)
+        logger.warn('API returned error:', response.data.error);
+        
+        // Check if this is a user error (not worth retrying)
+        const userErrors = ['invalid link', 'private', 'not found', 'incorrect', 'invalid profile'];
+        const isUserError = userErrors.some(err => response.data.error.toLowerCase().includes(err));
+        
+        if (isUserError) {
+          throw new AppError(`Unable to process order: ${response.data.error}. Please check your link and try a different service if needed.`, 400);
+        }
+        
+        // For other errors, retry
+        retryCount++;
+        if (retryCount < maxRetries) {
+          logger.info(`Retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      } else {
+        // Unexpected response format
+        logger.error('Unexpected  response format:', response.data);
+        retryCount++;
+        if (retryCount < maxRetries) {
+          logger.info(`Retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      }
+    } catch (error) {
+      logger.error(' API error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url?.replace(/key=[^&]+/, 'key=***'),
+        attempt: retryCount + 1
+      });
+      
+      // Check if it's a network/timeout error (worth retrying)
+      const isNetworkError = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || !error.response;
+      
+      if (isNetworkError) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          logger.info(`Network error, retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      } else {
+        // API error, check if user-related
+        const errorMsg = error.response?.data?.error || error.message || '';
+        const userErrors = ['invalid link', 'private', 'not found', 'incorrect', 'invalid profile'];
+        const isUserError = userErrors.some(err => errorMsg.toLowerCase().includes(err));
+        
+        if (isUserError) {
+          throw new AppError(`Unable to process order: ${errorMsg}. Please verify your link and try a different service if needed.`, 400);
+        }
+        
+        // Server error, retry
+        retryCount++;
+        if (retryCount < maxRetries) {
+          logger.info(`Server error, retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      }
+    }
+  }
+
+  // If all retries failed, show helpful message
+  if (!fampageOrderId) {
+    logger.error(`Failed to create order after ${maxRetries} attempts`);
+    throw new AppError(
+      'We\'re experiencing high demand right now. Please try again in a few moments or select a different service from the list.', 
+      503
+    );
+  }
+
+  // SUCCESS! Now deduct balance since order was created
   const balanceBefore = user.wallet.balance;
   user.wallet.balance -= costInINR;
   user.wallet.totalSpent += costInINR;
   await user.save();
 
+  logger.info(`Balance deducted: ₹${costInINR} from user ${userId}. New balance: ₹${user.wallet.balance}`);
+
   // Check for low balance and notify
   if (user.wallet.balance < 100 && user.wallet.balance > 0) {
     // Send notification asynchronously (don't wait for it)
     notificationService.notifyLowBalance(user._id, user.wallet.balance).catch(err => 
-      logger.error('Failed to send low balance notification:', err)
+      logger.error('Failed to send low balance notification:', {
+        message: err.message,
+        userId: user._id
+      })
     );
-  }
-
-  // Create order in Fampage
-  let fampageOrderId = null;
-  try {
-    const url = `${config.fampage.baseUrl}?action=add&service=${orderData.service}&link=${encodeURIComponent(orderData.link)}&quantity=${orderData.quantity}&key=${config.fampage.apiKey}`;
-    logger.info(`Calling Fampage API: service=${orderData.service}, quantity=${orderData.quantity}`);
-    const response = await axios.post(url);
-    
-    logger.info('Fampage API response:', response.data);
-    
-    if (response.data && response.data.order) {
-      fampageOrderId = response.data.order;
-      logger.info(`Fampage order created: ${fampageOrderId}`);
-    } else {
-      logger.error('Unexpected Fampage response:', response.data);
-      // Refund balance
-      user.wallet.balance = balanceBefore;
-      user.wallet.totalSpent -= costInINR;
-      await user.save();
-      logger.info(`Refunded ₹${costInINR} to user ${userId}`);
-      throw new AppError('Failed to create order in Fampage', 500);
-    }
-  } catch (error) {
-    logger.error('Fampage API error:', error.response?.data || error.message);
-    // Refund balance if not already refunded
-    if (user.wallet.balance === balanceBefore - costInINR) {
-      user.wallet.balance = balanceBefore;
-      user.wallet.totalSpent -= costInINR;
-      await user.save();
-      logger.info(`Refunded ₹${costInINR} to user ${userId} after Fampage error`);
-    }
-    throw new AppError(error.response?.data?.error || 'Failed to create order in Fampage', 500);
   }
 
   // Extract platform and service type from service name
@@ -255,18 +331,21 @@ const createOrder = async (
         apiKey: config.fampage.apiKey,
         status: "active",
       });
-      logger.info("Fampage provider created automatically");
+      logger.info("Service provider created automatically");
     }
     
     providerId = provider._id;
   } catch (error) {
-    logger.error('Failed to get Fampage provider:', error);
+    logger.error('Failed to get service provider:', {
+      message: error.message,
+      stack: error.stack
+    });
     // Refund if provider fetch fails
     user.wallet.balance = balanceBefore;
     user.wallet.totalSpent -= costInINR;
     await user.save();
     logger.info(`Refunded ₹${costInINR} to user ${userId} after provider error`);
-    throw new AppError('Failed to initialize provider', 500);
+    throw new AppError('Service temporarily unavailable. Your balance has been refunded. Please try again later.', 500);
   }
 
   // Create order in database
@@ -290,13 +369,16 @@ const createOrder = async (
     
     logger.info(`Order created in database: ${order._id}`);
   } catch (error) {
-    logger.error('Failed to create order in database:', error);
+    logger.error('Failed to create order in database:', {
+      message: error.message,
+      stack: error.stack
+    });
     // Refund balance since Fampage order was created but DB order failed
     user.wallet.balance = balanceBefore;
     user.wallet.totalSpent -= costInINR;
     await user.save();
     logger.info(`Refunded ₹${costInINR} to user ${userId} after DB error`);
-    throw new AppError('Failed to save order to database', 500);
+    throw new AppError('Failed to save order. Your balance has been refunded. Please try again.', 500);
   }
 
   // Create transaction record
@@ -333,7 +415,7 @@ const createOrder = async (
     }
   }
 
-  logger.info(`Order created: ${order._id}, Fampage Order: ${fampageOrderId}, Cost: ₹${costInINR.toFixed(2)}`);
+  logger.info(`Order created: ${order._id}, External Order: ${fampageOrderId}, Cost: ₹${costInINR.toFixed(2)}`);
 
   return {
     order,
@@ -499,9 +581,12 @@ const getAllOrders = async (query) => {
       },
     };
   } catch (error) {
-    console.error('Error in getAllOrders:', error);
-    logger.error('Error in getAllOrders', { error: error.message, stack: error.stack, query });
-    throw error;
+    logger.error('Error in getAllOrders:', {
+      message: error.message,
+      stack: error.stack,
+      query: query
+    });
+    throw new AppError('Failed to fetch orders. Please try again.', 500);
   }
 };
 
@@ -715,7 +800,10 @@ const updateOrderStatusFromFampage = async (orderId) => {
 
     return order;
   } catch (error) {
-    logger.error(`Failed to update order status for ${orderId}:`, error.message);
+    logger.error(`Failed to update order status for ${orderId}:`, {
+      message: error.message,
+      stack: error.stack
+    });
     return null;
   }
 };
@@ -723,7 +811,7 @@ const updateOrderStatusFromFampage = async (orderId) => {
 // Update all pending/in-progress orders from Fampage (called every 4 hours)
 const updateAllOrderStatuses = async () => {
   try {
-    logger.info('Starting periodic order status update from Fampage...');
+    logger.info('Starting periodic order status update...');
 
     const ordersToCheck = await Order.find({
       apiOrderId: { $exists: true, $ne: null },
@@ -746,7 +834,10 @@ const updateAllOrderStatuses = async () => {
     logger.info(`Order status update completed. Updated ${updatedCount} orders.`);
     return updatedCount;
   } catch (error) {
-    logger.error('Failed to update order statuses:', error.message);
+    logger.error('Failed to update order statuses:', {
+      message: error.message,
+      stack: error.stack
+    });
     return 0;
   }
 };

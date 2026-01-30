@@ -32,7 +32,7 @@ const getOrCreateFampageProvider = async () => {
       apiKey: config.fampage.apiKey,
       status: "active",
     });
-    logger.info("Fampage provider created automatically from config");
+    logger.info("Service provider created automatically from config");
   } else if (
     provider.apiKey !== config.fampage.apiKey &&
     config.fampage.apiKey
@@ -41,7 +41,7 @@ const getOrCreateFampageProvider = async () => {
     provider.apiKey = config.fampage.apiKey;
     provider.baseUrl = config.fampage.baseUrl;
     await provider.save();
-    logger.info("Fampage provider API key updated from config");
+    logger.info("Service provider API key updated from config");
   }
 
   return provider;
@@ -265,11 +265,11 @@ const addOrder = async (
 
   // Call Fampage API to create order
   const result = await instance.addOrder(service, link, quantity);
-  console.log('Fampage API result:', JSON.stringify(result, null, 2));
+  console.log('API result:', JSON.stringify(result, null, 2));
 
   // Check if we got an order ID (even if there was an error, Fampage might return order ID)
   const fampageOrderId = result.data?.order || result.data?.id || result.data?.orderId || null;
-  console.log('Fampage order ID:', fampageOrderId);
+  console.log('External order ID:', fampageOrderId);
 
   // If API call successful, create Order record and auto-create invoice
   if (result.success) {
@@ -594,7 +594,10 @@ const logApiCall = async (
 
     await ApiIntegrationLog.create(logData);
   } catch (error) {
-    logger.error("Failed to log API call", error);
+    logger.error("Failed to log API call", {
+      message: error.message,
+      provider: provider
+    });
   }
 };
 

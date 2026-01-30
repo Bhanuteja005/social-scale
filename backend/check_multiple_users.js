@@ -6,10 +6,8 @@ require('dotenv').config();
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://socialscale:SocialScale2024@ac-re52lu0-shard-00-00.z3v8zkw.mongodb.net/social-scale?retryWrites=true&w=majority';
 
 const emails = [
-  'satyatarun.951@gmail.com',
-  'jaikushalbysani@gmail.com',
-  'shivacharankosari099@gmail.com',
-  'brinto.agogi@gmail.com'
+  'has.login9@gmail.com',
+
 ];
 
 async function checkMultipleUsers() {

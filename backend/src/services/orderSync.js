@@ -67,7 +67,10 @@ class OrderSyncService {
         const order = await this.syncOrderStatus(orderId);
         results.push({ orderId, status: "success", order });
       } catch (error) {
-        logger.error(`Error syncing order ${orderId}:`, error);
+        logger.error(`Error syncing order ${orderId}:`, {
+          message: error.message,
+          stack: error.stack
+        });
         results.push({ orderId, status: "error", error: error.message });
       }
     }
@@ -127,7 +130,10 @@ class OrderSyncService {
           }
         }
       } catch (error) {
-        logger.error(`Error syncing order ${order._id}:`, error);
+        logger.error(`Error syncing order ${order._id}:`, {
+          message: error.message,
+          orderId: order._id
+        });
         results.push({
           orderId: order._id,
           apiOrderId: order.apiOrderId,
@@ -158,7 +164,10 @@ class OrderSyncService {
       try {
         await this.syncPendingOrders();
       } catch (error) {
-        logger.error("Error in periodic sync:", error);
+        logger.error("Error in periodic sync:", {
+          message: error.message,
+          stack: error.stack
+        });
       }
     };
 

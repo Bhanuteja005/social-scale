@@ -48,7 +48,11 @@ const createPaymentOrder = async (userId, amount) => {
       keyId: config.razorpay.keyId,
     };
   } catch (error) {
-    logger.error("Failed to create Razorpay order:", error);
+    logger.error("Failed to create Razorpay order:", {
+      message: error.message,
+      description: error.error?.description,
+      code: error.error?.code
+    });
     throw new AppError(error.message || "Failed to create payment order", 500);
   }
 };
@@ -113,7 +117,10 @@ const verifyAndCompletePayment = async (userId, paymentData) => {
       transaction,
     };
   } catch (error) {
-    logger.error("Payment verification failed:", error);
+    logger.error("Payment verification failed:", {
+      message: error.message,
+      stack: error.stack
+    });
     throw new AppError(error.message || "Payment verification failed", 500);
   }
 };

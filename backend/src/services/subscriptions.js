@@ -69,7 +69,11 @@ class SubscriptionService {
         throw new AppError("Payment verification failed", 400);
       }
     } catch (error) {
-      logger.error("Error verifying Razorpay payment:", error);
+      logger.error("Error creating Razorpay order:", {
+        message: error.message,
+        description: error.error?.description,
+        code: error.error?.code
+      });
       throw error;
     }
   }

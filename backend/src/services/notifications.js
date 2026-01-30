@@ -13,7 +13,11 @@ class NotificationService {
       logger.info(`Notification created for user ${userId}: ${notification._id}`);
       return notification;
     } catch (error) {
-      logger.error("Error creating notification:", error);
+      logger.error("Error creating notification:", {
+        message: error.message,
+        userId: userId,
+        stack: error.stack
+      });
       throw error;
     }
   }
