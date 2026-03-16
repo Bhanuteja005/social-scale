@@ -1,6 +1,6 @@
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
+const MAX_LIMIT = 10000;
 
 const getPaginationParams = (query) => {
   const page = Math.max(1, parseInt(query.page) || DEFAULT_PAGE);
