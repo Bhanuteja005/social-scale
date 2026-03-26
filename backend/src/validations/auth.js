@@ -5,7 +5,7 @@ const registerSchema = Joi.object({
   name: Joi.string().optional().messages({
     "string.base": "Name must be a string",
   }),
-  email: Joi.string().email().required().messages({
+  email: Joi.string().trim().lowercase().email().required().messages({
     "string.email": "Please provide a valid email address",
     "any.required": "Email is required",
   }),
@@ -22,7 +22,7 @@ const registerSchema = Joi.object({
 });
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().required().messages({
+  email: Joi.string().trim().lowercase().email().required().messages({
     "string.email": "Please provide a valid email address",
     "any.required": "Email is required",
   }),
@@ -38,7 +38,7 @@ const refreshTokenSchema = Joi.object({
 });
 
 const createUserSchema = Joi.object({
-  email: Joi.string().email().required().messages({
+  email: Joi.string().trim().lowercase().email().required().messages({
     "string.email": "Please provide a valid email address",
     "any.required": "Email is required",
   }),
@@ -69,7 +69,7 @@ const changePasswordSchema = Joi.object({
 });
 
 const forgotPasswordSchema = Joi.object({
-  email: Joi.string().email().required().messages({
+  email: Joi.string().trim().lowercase().email().required().messages({
     "string.email": "Please provide a valid email address",
     "any.required": "Email is required",
   }),

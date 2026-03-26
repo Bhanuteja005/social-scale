@@ -1,10 +1,20 @@
-require("dotenv").config();
+const dotenv = require("dotenv");
+const path = require("path");
+
+// Ensure we load backend/.env even when executed from repo root
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
+
 const axios = require("axios");
-const config = require("../src/config/env");
+const config = require(path.join(__dirname, "..", "src", "config", "env"));
 
 async function getAllServices() {
   try {
     const url = `${config.fampage.baseUrl}?action=services&key=${config.fampage.apiKey}`;
+    console.log('Fetching services from', url);
+    if (!config.fampage.apiKey) {
+      throw new Error('FAMPAGE_API_KEY is missing (check backend/.env)');
+    }
+
     const response = await axios.get(url);
 
     if (response.data && Array.isArray(response.data)) {

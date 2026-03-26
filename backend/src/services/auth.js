@@ -112,7 +112,8 @@ const register = async (userData) => {
 };
 
 const login = async (email, password) => {
-  const user = await User.findOne({ email }).select("+password");
+  const normalizedEmail = (email || "").trim().toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail }).select("+password");
 
   if (!user) {
     throw new UnauthorizedError("Invalid email or password");
