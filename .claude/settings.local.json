@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\backend *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\backend\\\\src *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\backend\\\\src\\\\routes *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\backend\\\\src\\\\services *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\backend\\\\src\\\\controllers *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\backend\\\\src\\\\models *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency\\\\src *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency\\\\src\\\\pages *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency\\\\src\\\\services *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency\\\\src\\\\components *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency\\\\src\\\\types *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency\\\\src\\\\components\\\\dashboard *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency\\\\src\\\\components\\\\layout *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency\\\\src\\\\data *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\socialscaleagency\\\\src\\\\components\\\\sections\\\\services *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\backend\\\\src\\\\config *)",
+      "Bash(dir C:\\\\Users\\\\pashi\\\\Downloads\\\\social_scale\\\\backend\\\\src\\\\schedulers *)"
+    ]
+  }
+}
